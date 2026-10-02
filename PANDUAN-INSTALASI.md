@@ -47,7 +47,12 @@ Hasilnya di spreadsheet: tab **Pengaturan, Kelompok, Dapuan, Laporan, KunciBulan
 ### A3. (Opsional) Pindahkan data dari 3 aplikasi lama
 
 1. Isi blok `MIGRASI` di bagian atas `Kode.gs` dengan ID spreadsheet lama
-   (ID = bagian URL di antara `/d/` dan `/edit`).
+   (ID = bagian URL di antara `/d/` dan `/edit`) dan **nama tab** tempat datanya berada, contoh:
+
+   ```javascript
+   LAPORAN_SPREADSHEET_ID: '1KAmr96ZgZzpqWnK4bWmFeVUYt3LFJ9l7AsJTIX9zN84',
+   LAPORAN_TAB: 'Nama tab persis seperti di bagian bawah spreadsheet',
+   ```
 2. Biarkan `DRY_RUN: true`, pilih fungsi **`migrasiDataLama`** → ▶ Jalankan.
    Log menampilkan **pemetaan kolom lama → kolom baru** dan **jumlah baris lama vs baru**, tanpa menulis apa pun.
 3. Jika ada kolom bertanda `❌ TIDAK TERPETAKAN` yang penting, kirim screenshot log-nya — aturan pemetaan (`PETA_LAPORAN`) tinggal ditambah.
@@ -183,9 +188,9 @@ Satu-satunya proses yang **sengaja menunggu server** adalah **kirim/koreksi lapo
 
 ## E. CATATAN PENTING
 
-- **Isian formulir.** PRD menyebut daftar isian rinci diambil dari formulir lama, yang tidak ikut dilampirkan. Isian disusun dari tabel PRD 5.2 dan desain. Untuk menambah/mengubah isian, ubah dua tempat:
+- **Isian formulir** sudah mengikuti formulir lama *Laporan PJP Klp Desa SS* (53 kolom), termasuk prosentase kehadiran & materi, laporan kelas di link, laporan lainnya & kendala per jenjang, jadwal & kehadiran tahfidz, dan usulan/info. Untuk menambah isian baru, ubah dua tempat:
   1. `assets/js/schema.js` (label & aturan tampilan)
-  2. `FORM_KEYS` di `Kode.gs` (kolom di sheet — tambahkan di akhir daftar)
+  2. `FORM_KEYS` di `Kode.gs` (tambahkan di akhir daftar)
 - **Data diedit manual di Sheets** akan tampil paling lambat 5 menit kemudian (cache). Agar langsung tampil, jalankan fungsi `bersihkanCache` di editor Apps Script, atau dari menu spreadsheet **⚙️ Musyawaroh → Bersihkan cache aplikasi**.
 - **Lupa password admin:** isi `SETUP_AWAL.password`, jalankan `resetPasswordAdmin`, lalu kosongkan lagi.
 - **Login terblokir** (5× salah): tunggu 15 menit, atau jalankan `bukaBlokirLogin`.

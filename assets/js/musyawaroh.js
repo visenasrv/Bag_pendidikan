@@ -134,30 +134,36 @@
         '<h2 class="giant" style="margin-top:.4em">' + esc(s.k.nama) + '</h2><p style="font-size:1.4em;margin-top:.4em" class="muted">Belum mengirim laporan ' + esc(periode) + '</p><span class="badge warn" style="margin-top:1em;font-size:1em">Menunggu pengiriman</span></div></div>';
     }
     const l = s.l, r = App.rekap([l]);
+    const pct = v => (v !== '' && v !== undefined && v !== null ? v + '%' : '—');
     const jen = [
-      ['Caberawit', l.Jml_Caberawit, 'Hari efektif: ' + (l.Cbr_HariEfektif || '—') + ' hari', 'smile'],
-      ['Praremaja', l.Jml_Praremaja, 'Hari efektif: ' + (l.Prm_HariEfektif || '—') + ' hari', 'cap'],
-      ['Remaja', l.Jml_Remaja, 'Hari efektif: ' + (l.Rmj_HariEfektif || '—') + ' hari', 'users'],
-      ['Pranikah', l.Jml_Pranikah, 'Kehadiran: ' + (l.Pnk_Hadir1 !== '' && l.Pnk_Hadir1 !== undefined ? l.Pnk_Hadir1 + '%' : '—') + (l.Pnk_Hadir2 ? ' · ' + l.Pnk_Hadir2 + '%' : ''), 'heart'],
+      ['Caberawit', l.Jml_Caberawit, (l.Cbr_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Cbr_Hadir) + ' · materi ' + pct(l.Cbr_Materi)],
+      ['Praremaja', l.Jml_Praremaja, (l.Prm_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Prm_Hadir) + ' · materi ' + pct(l.Prm_Materi)],
+      ['Remaja', l.Jml_Remaja, (l.Rmj_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Rmj_Hadir) + ' · materi ' + pct(l.Rmj_Materi)],
+      ['Pranikah', l.Jml_Pranikah, 'Sambung: ' + pct(l.Pnk_Hadir1) + (l.Pnk_Hadir2 !== '' && l.Pnk_Hadir2 !== undefined ? ' · ' + pct(l.Pnk_Hadir2) : '')],
     ];
+    const linkOk = ['Cbr_Link', 'Prm_Link', 'Rmj_Link', 'Pnk_Link', 'MM_Link'].filter(k => l[k] === 'Sudah').length;
     const kbm = [
       ['calendar', 'Sudah Muslimus?', l.Muslimus === 'Ya' ? 'Ya' + (l.Muslimus_Tanggal ? ' · ' + App.fmtTanggal(l.Muslimus_Tanggal, true) : '') : (l.Muslimus || '—')],
       ['fileCheck', 'Laporan PJP di Link', l.PJP_Link ? (/Sudah/.test(l.PJP_Link) ? 'Sudah lengkap' : 'Belum') : '—'],
-      ['percent', 'Kehadiran Pranikah', l.Pnk_Hadir1 !== '' && l.Pnk_Hadir1 !== undefined ? l.Pnk_Hadir1 + '%' : '—'],
-      ['users', 'Muda-Mudi (peserta)', l.MM_Peserta !== '' && l.MM_Peserta !== undefined ? l.MM_Peserta + ' Orang' : '—'],
-      ['book', 'Kelas Tahfidz', l.Tahfidz_Ada === 'Ada' ? 'Ada · ' + App.num(l.Tahfidz_Jml) + ' Orang' : (l.Tahfidz_Ada || '—')],
-      ['building', 'Generus Mondok', App.num(l.Generus_Sedang_Mondok) + ' Orang'],
-      ['mic', 'Sudah Mubaligh', App.num(l.Generus_Sudah_Mondok) + ' Orang'],
+      ['listCheck', 'Laporan kelas di link', linkOk + ' / 5 jenjang'],
+      ['users', 'Muda-Mudi', App.num(l.Jml_MudaMudi) + ' Orang · hadir ' + pct(l.MM_Hadir)],
+      ['book', 'Kelas Tahfidz', l.Tahfidz_Ada === 'Ada' ? 'Ada · ' + App.num(l.Tahfidz_Jml) + ' Orang · ' + pct(l.Tahfidz_Hadir) : (l.Tahfidz_Ada || '—')],
+      ['building', 'Generus Sedang Mondok', App.num(l.Generus_Sedang_Mondok) + ' Orang'],
+      ['mic', 'Sudah Mubaligh/Mubalighot', App.num(l.Generus_Sudah_Mondok) + ' Orang'],
     ];
-    const catatan = [['Caberawit', l.Cbr_Catatan], ['Praremaja', l.Prm_Catatan], ['Remaja', l.Rmj_Catatan], ['Pranikah', [l.Pnk_Sambung1, l.Pnk_Sambung2].filter(Boolean).join(' · ')],
-      ['Muda-Mudi', [l.MM_Minggu1, l.MM_Minggu2, l.MM_Minggu3, l.MM_Minggu4, l.MM_Lainnya].filter(Boolean).join(' · ')], ['Lainnya', l.Catatan_Lainnya]].filter(x => x[1]);
+    const bersih = v => (v && !/^[-.\s]*$/.test(String(v)) && !/^tidak ada\s*$/i.test(String(v)) ? String(v) : '');
+    const catatan = [
+      ['Kendala Caberawit', l.Cbr_Kendala], ['Kendala Praremaja', l.Prm_Kendala], ['Kendala Remaja', l.Rmj_Kendala], ['Kendala Pranikah', l.Pnk_Kendala], ['Kendala Muda-Mudi', l.MM_Kendala],
+      ['Caberawit', l.Cbr_Lainnya], ['Praremaja', l.Prm_Lainnya], ['Remaja', l.Rmj_Lainnya], ['Pranikah', l.Pnk_Lainnya], ['Muda-Mudi', l.MM_LapLainnya],
+      ['Usulan / Info', l.Catatan_Lainnya],
+    ].map(x => [x[0], bersih(x[1])]).filter(x => x[1]);
     return '<div class="row between" style="flex-wrap:wrap;align-items:flex-start"><div><span class="kicker">Laporan Kelompok</span> <span class="muted" style="margin-left:.6em">' + icon('calendar', 'sm') + ' Bulan Kegiatan Penuh: <b style="color:var(--text)">' + esc(periode) + '</b></span>' +
       '<h2 class="giant">KELOMPOK ' + esc(String(s.k.nama).toUpperCase()) + '</h2><div class="underline"></div></div>' +
       '<div class="side-card row" style="gap:.8em;padding:.9em 1.2em"><span class="ico-tile">' + icon('shield') + '</span><div><div class="section-label">Status Pelaporan</div><b style="color:var(--link)">Dikirim ' + esc(App.fmtWaktu(l.WaktuKirim, { noYear: true })) + (l.WaktuUbah ? ' · dikoreksi' : '') + '</b></div></div></div>' +
       '<div class="p-grid"><div><div class="jen-grid">' + jen.map(j => '<div class="jen"><div class="h">' + j[0] + '</div><div class="n">' + App.fmtNum(j[1]) + '<small>Orang</small></div><div class="note">' + esc(j[2]) + '</div></div>').join('') + '</div>' +
       '<div class="total-band"><div><div style="font-weight:800;letter-spacing:.08em;text-transform:uppercase">' + icon('award') + ' Total Generus Kelompok</div><div style="opacity:.85;margin-top:.3em">Caberawit + Praremaja + Remaja + Pranikah</div></div><div class="n">' + App.fmtNum(r.total) + '<small>Orang</small></div></div></div>' +
       '<div><div class="side-card"><h3>' + icon('listCheck') + ' Rincian Program KBM</h3>' + kbm.map(x => '<div class="kbm-row"><span>' + icon(x[0], 'sm') + ' ' + esc(x[1]) + '</span><b>' + esc(x[2]) + '</b></div>').join('') + '</div>' +
-      (catatan.length ? '<div class="side-card catatan"><h3>' + icon('message') + ' Catatan & Kendala</h3><ul>' + catatan.map(x => '<li><b>' + esc(x[0]) + ':</b> ' + esc(x[1]) + '</li>').join('') + '</ul></div>' : '') +
+      (catatan.length ? '<div class="side-card catatan"><h3>' + icon('message') + ' Catatan & Kendala</h3><ul>' + catatan.map(x => '<li><b>' + esc(x[0]) + ':</b> <span style="white-space:pre-line">' + esc(x[1]) + '</span></li>').join('') + '</ul></div>' : '') +
       '</div></div>';
   }
 })();

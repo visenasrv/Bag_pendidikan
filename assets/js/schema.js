@@ -21,7 +21,7 @@
         { type: 'cek' },
         { k: 'Muslimus', label: 'Sudah Muslimus?', type: 'seg', options: ['Ya', 'Belum'], req: true },
         { k: 'Muslimus_Tanggal', label: 'Tanggal Muslimus', type: 'date', req: true, show: ya, panel: 'mus' },
-        { k: 'Muslimus_Ket', label: 'Keterangan Muslimus', type: 'textarea', show: ya, panel: 'mus', ph: 'Contoh: Diadakan di Masjid Arrosyid, dihadiri 18 pengurus' },
+        { k: 'Muslimus_Ket', label: 'Keterangan Muslimus', type: 'textarea', show: d => !!d.Muslimus, panel: 'mus', ph: 'Contoh: Diadakan di Masjid Arrosyid, dihadiri 18 pengurus (atau rencana jadwal bila belum)' },
         {
           k: 'PJP_Link', label: 'Laporan PJP di Link', type: 'radio', req: true, options: [
             { v: 'Sudah Diisi Lengkap', sub: 'Melalui tautan resmi pelaporan PJP Desa' },
@@ -30,54 +30,37 @@
         },
       ],
     },
-    {
-      id: 'caberawit', huruf: 'b', judul: 'Caberawit', pendek: 'Caberawit',
-      sub: 'Data jenjang Caberawit (usia PAUD – SD) bulan ini',
-      fields: [
-        { k: 'Jml_Caberawit', label: 'Jumlah Caberawit', type: 'num', suffix: 'Orang', req: true, big: true, help: 'Total seluruh santri Caberawit binaan aktif' },
-        { k: 'Cbr_HariEfektif', label: 'Hari Efektif KBM', type: 'num', suffix: 'Hari', req: true, max: 31 },
-        { k: 'Cbr_Catatan', label: 'Catatan / Kegiatan Khusus Caberawit', type: 'textarea', ph: 'Contoh: Ada festival anak sholeh, pembagian rapot…' },
-      ],
-    },
-    {
-      id: 'praremaja', huruf: 'c', judul: 'Praremaja', pendek: 'Praremaja',
-      sub: 'Data jenjang Praremaja (usia SMP) bulan ini',
-      fields: [
-        { k: 'Jml_Praremaja', label: 'Jumlah Praremaja', type: 'num', suffix: 'Orang', req: true, big: true },
-        { k: 'Prm_HariEfektif', label: 'Hari Efektif KBM', type: 'num', suffix: 'Hari', req: true, max: 31 },
-        { k: 'Prm_Catatan', label: 'Catatan / Kegiatan Khusus Praremaja', type: 'textarea', ph: 'Contoh: Pengajian rutin berjalan tertib…' },
-      ],
-    },
-    {
-      id: 'remaja', huruf: 'd', judul: 'Remaja', pendek: 'Remaja',
-      sub: 'Data jenjang Remaja (usia SMA/SMK) bulan ini',
-      fields: [
-        { k: 'Jml_Remaja', label: 'Jumlah Remaja', type: 'num', suffix: 'Orang', req: true, big: true },
-        { k: 'Rmj_HariEfektif', label: 'Hari Efektif KBM', type: 'num', suffix: 'Hari', req: true, max: 31 },
-        { k: 'Rmj_Catatan', label: 'Catatan / Kegiatan Khusus Remaja', type: 'textarea', ph: 'Contoh: Kegiatan keakraban aktif…' },
-      ],
-    },
+    jenjang('caberawit', 'b', 'Caberawit', 'Cbr', 'usia PAUD – SD', 'Jml_Caberawit'),
+    jenjang('praremaja', 'c', 'Praremaja', 'Prm', 'usia SMP', 'Jml_Praremaja'),
+    jenjang('remaja', 'd', 'Remaja', 'Rmj', 'usia SMA/SMK', 'Jml_Remaja'),
     {
       id: 'pranikah', huruf: 'e', judul: 'Pranikah', pendek: 'Pranikah',
       sub: 'Data jenjang Pranikah (mandiri & usia nikah) bulan ini',
       fields: [
         { k: 'Jml_Pranikah', label: 'Jumlah Pranikah', type: 'num', suffix: 'Orang', req: true, big: true },
-        { k: 'Pnk_Sambung1', label: 'Sambung Pranikah — Kegiatan 1', type: 'textarea', ph: 'Contoh: Sambung & keputrian, hadir penuh' },
-        { k: 'Pnk_Sambung2', label: 'Sambung Pranikah — Kegiatan 2', type: 'textarea', ph: 'Opsional' },
-        { k: 'Pnk_Hadir1', label: 'Prosentase Kehadiran 1', type: 'num', suffix: '%', req: true, max: 100, half: true },
-        { k: 'Pnk_Hadir2', label: 'Prosentase Kehadiran 2', type: 'num', suffix: '%', max: 100, half: true, help: 'Opsional' },
+        { k: 'Pnk_Sambung1', label: 'Keterangan Sambung 1', type: 'textarea', rows: 2, ph: 'Contoh: Ikut sambung kelompok & pengajian muda-mudi' },
+        { k: 'Pnk_Hadir1', label: 'Prosentase Sambung 1', type: 'num', suffix: '%', req: true, max: 100 },
+        { k: 'Pnk_Sambung2', label: 'Keterangan Sambung 2', type: 'textarea', rows: 2, ph: 'Opsional' },
+        { k: 'Pnk_Hadir2', label: 'Prosentase Sambung 2', type: 'num', suffix: '%', max: 100, help: 'Opsional' },
+        { k: 'Pnk_Link', label: 'Laporan Kelas Pranikah di Link', type: 'seg', options: ['Sudah', 'Belum'], req: true },
+        { k: 'Pnk_Lainnya', label: 'Laporan Lainnya', type: 'textarea', rows: 2, ph: 'Opsional' },
+        { k: 'Pnk_Kendala', label: 'Kendala', type: 'textarea', rows: 2, ph: 'Opsional' },
       ],
     },
     {
       id: 'mudamudi', huruf: 'f', judul: 'Muda-Mudi', pendek: 'Muda-Mudi',
-      sub: 'Kegiatan mandiri muda-mudi per minggu',
+      sub: 'Kegiatan muda-mudi per minggu bulan ini',
       fields: [
+        { k: 'Jml_MudaMudi', label: 'Jumlah Muda-Mudi', type: 'num', suffix: 'Orang', req: true, big: true },
         { k: 'MM_Minggu1', label: 'Minggu 1', type: 'text', ph: 'Kegiatan minggu pertama' },
         { k: 'MM_Minggu2', label: 'Minggu 2', type: 'text', ph: 'Kegiatan minggu kedua' },
         { k: 'MM_Minggu3', label: 'Minggu 3', type: 'text', ph: 'Kegiatan minggu ketiga' },
         { k: 'MM_Minggu4', label: 'Minggu 4', type: 'text', ph: 'Kegiatan minggu keempat' },
-        { k: 'MM_Lainnya', label: 'Kegiatan Lainnya', type: 'textarea', ph: 'Opsional' },
-        { k: 'MM_Peserta', label: 'Jumlah Peserta', type: 'num', suffix: 'Orang' },
+        { k: 'MM_Lainnya', label: 'Lainnya', type: 'text', ph: 'Opsional' },
+        { k: 'MM_Hadir', label: 'Prosentase Kehadiran', type: 'num', suffix: '%', req: true, max: 100 },
+        { k: 'MM_Link', label: 'Laporan Kelas Muda-Mudi di Link', type: 'seg', options: ['Sudah', 'Belum'], req: true },
+        { k: 'MM_LapLainnya', label: 'Laporan Lainnya', type: 'textarea', rows: 2, ph: 'Opsional' },
+        { k: 'MM_Kendala', label: 'Kendala', type: 'textarea', rows: 2, ph: 'Opsional' },
       ],
     },
     {
@@ -86,25 +69,44 @@
       fields: [
         { k: 'Tahfidz_Ada', label: 'Ada Kelas Tahfidz?', type: 'seg', options: ['Ada', 'Tidak'], req: true },
         { k: 'Tahfidz_Jml', label: 'Jumlah Peserta Tahfidz', type: 'num', suffix: 'Orang', req: true, show: d => d.Tahfidz_Ada === 'Ada', panel: 'thf' },
-        { k: 'Tahfidz_Ket', label: 'Keterangan', type: 'textarea', show: d => d.Tahfidz_Ada === 'Tidak', panel: 'thf', ph: 'Opsional — mis. alasan belum ada kelas' },
+        { k: 'Tahfidz_Jadwal', label: 'Jadwal Kegiatan Tahfidz', type: 'text', ph: 'Contoh: 3 kali seminggu', show: d => d.Tahfidz_Ada === 'Ada', panel: 'thf' },
+        { k: 'Tahfidz_Hadir', label: 'Prosentase Kehadiran Tahfidz', type: 'num', suffix: '%', req: true, max: 100, show: d => d.Tahfidz_Ada === 'Ada', panel: 'thf' },
+        { k: 'Tahfidz_Ket', label: 'Keterangan Tidak Ada Tahfidz', type: 'textarea', show: d => d.Tahfidz_Ada === 'Tidak', panel: 'thf', ph: 'Opsional — mis. alasan belum ada kelas' },
       ],
     },
     {
       id: 'mondok', huruf: 'h', judul: 'Generus Mondok & Tugas', pendek: 'Mondok',
       sub: 'Isi 0 jika tidak ada',
       fields: [
-        { k: 'Generus_Sudah_Mondok', label: 'Sudah mondok (Mubaligh/Mubalighot)', type: 'num', suffix: 'Orang', req: true, help: 'Generus yang sudah selesai mondok' },
-        { k: 'Generus_Sedang_Mondok', label: 'Sedang mondok', type: 'num', suffix: 'Orang', req: true, help: 'Generus yang saat ini sedang di pondok' },
+        { k: 'Generus_Sedang_Mondok', label: 'Generus Sedang Mondok', type: 'num', suffix: 'Orang', req: true, help: 'Generus yang saat ini sedang di pondok' },
+        { k: 'Generus_Sudah_Mondok', label: 'Generus Sudah Jadi Mubaligh/Mubalighot', type: 'num', suffix: 'Orang', req: true, help: 'Generus yang sudah selesai mondok' },
       ],
     },
     {
-      id: 'lainnya', huruf: 'i', judul: 'Lainnya', pendek: 'Lainnya',
-      sub: 'Catatan & kendala kelompok',
+      id: 'lainnya', huruf: 'i', judul: 'Usulan / Info', pendek: 'Usulan',
+      sub: 'Usulan, informasi, atau hal yang perlu dibahas di musyawaroh',
       fields: [
-        { k: 'Catatan_Lainnya', label: 'Catatan / Kendala', type: 'textarea', ph: 'Tulis catatan, kendala, atau usulan untuk dibahas di musyawaroh (opsional)', rows: 5 },
+        { k: 'Catatan_Lainnya', label: 'Usulan / Info', type: 'textarea', ph: 'Opsional', rows: 5 },
       ],
     },
   ];
+
+  /** Bagian jenjang Caberawit/Praremaja/Remaja (struktur sama seperti formulir lama) */
+  function jenjang(id, huruf, nama, p, usia, jml) {
+    return {
+      id: id, huruf: huruf, judul: nama, pendek: nama,
+      sub: 'Data jenjang ' + nama + ' (' + usia + ') bulan ini',
+      fields: [
+        { k: jml, label: 'Jumlah ' + nama, type: 'num', suffix: 'Orang', req: true, big: true, help: 'Total seluruh generus ' + nama + ' binaan aktif' },
+        { k: p + '_HariEfektif', label: 'Jumlah Hari Efektif', type: 'num', suffix: 'Hari', req: true, max: 31 },
+        { k: p + '_Hadir', label: 'Prosentase Kehadiran', type: 'num', suffix: '%', req: true, max: 100, half: true },
+        { k: p + '_Materi', label: 'Materi Tersampaikan', type: 'num', suffix: '%', req: true, max: 100, half: true },
+        { k: p + '_Link', label: 'Laporan Kelas ' + nama + ' di Link', type: 'seg', options: ['Sudah', 'Belum'], req: true },
+        { k: p + '_Lainnya', label: 'Laporan Lainnya', type: 'textarea', rows: 2, ph: 'Opsional — mis. kegiatan khusus bulan ini' },
+        { k: p + '_Kendala', label: 'Kendala', type: 'textarea', rows: 2, ph: 'Opsional' },
+      ],
+    };
+  }
 
   App.FORM_KEYS = [];
   App.FORM.forEach(s => s.fields.forEach(f => { if (f.k && ['KelompokID', 'Bulan', 'Tahun'].indexOf(f.k) < 0) App.FORM_KEYS.push(f.k); }));

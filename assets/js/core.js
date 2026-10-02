@@ -258,9 +258,30 @@
   App.swrPeek = key => { const c = App.ls.get('swr_' + key); return c ? c.d : null; };
   App.swrBust = key => App.ls.del('swr_' + key);
 
+  // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
+  App.SERVER_MIN = '1.1.0';
+  const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
+  App.cekVersi = function (v) {
+    const lama = verNum(v) < verNum(App.SERVER_MIN);
+    let el = document.getElementById('ver-warn');
+    if (!lama) { if (el) el.remove(); return true; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ver-warn';
+      el.className = 'ver-warn';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = icon('alert') + '<div><b>Server belum diperbarui (versi ' + esc(v || 'lama') + ', butuh ' + App.SERVER_MIN + ').</b> Data bisa tampil tidak lengkap. ' +
+      'Buka Apps Script → <b>Terapkan → Kelola deployment → ✏️ Edit → Versi baru → Terapkan</b>, lalu muat ulang halaman ini.</div>' +
+      '<button class="icon-btn" aria-label="Tutup" onclick="this.parentNode.remove()">' + icon('x') + '</button>';
+    return false;
+  };
+
   // Data publik bersama
   App.data = {
-    config(onData) { return App.swr('cfg', () => App.api.call('getConfig'), onData, 60000); },
+    config(onData) {
+      return App.swr('cfg', () => App.api.call('getConfig'), d => { App.cekVersi(d && d.versi); if (onData) onData(d); }, 60000);
+    },
     dash(tahun, onData) { return App.swr('dash_' + tahun, () => App.api.call('getDashboardPublik', { tahun: tahun }), onData, 20000); },
     notulen(onData) { return App.swr('notulen', () => App.api.call('getNotulenList'), onData, 20000); },
   };
@@ -555,6 +576,10 @@
       const seq = this.mutSeq;
       this.fetching = App.api.admin('getAdminBundle').then(d => {
         this.lastFetch = Date.now();
+        App.cekVersi(d && d.versi);
+        if (this.data && this.data.versi !== d.versi) {
+          Object.keys(localStorage).filter(k => k.indexOf('swr_') === 0).forEach(k => App.ls.del(k));
+        }
         if (!this.queue.length && seq === this.mutSeq) {
           const changed = JSON.stringify(d) !== JSON.stringify(this.data);
           this.data = d;
@@ -643,7 +668,18 @@
       const m = map[s] || map.ok;
       el.className = 'sync ' + m[0];
       el.innerHTML = icon(m[1]) + '<span>' + m[2] + '</span>';
-      el.title = this.queue.length ? this.queue.length + ' perubahan menunggu dikirim' : 'Semua perubahan tersimpan di server';
+      el.title = this.queue.length ? this.queue.length + ' perubahan menunggu dikirim' : 'Semua perubahan tersimpan · ketuk untuk memuat ulang data dari server';
+      if (!el._bound) {
+        el._bound = true;
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', () => {
+          if (this.queue.length) { this.pump(); return; }
+          Object.keys(localStorage).filter(k => k.indexOf('swr_') === 0).forEach(k => App.ls.del(k));
+          this.setSync('busy');
+          this.refresh(true).then(() => { this.setSync('ok'); App.toast('Data terbaru dimuat dari server.'); this.emit(); })
+            .catch(e => { this.setSync('err'); App.toast(e.message, 'err'); });
+        });
+      }
     },
   });
 
