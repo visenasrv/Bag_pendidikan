@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Musyawaroh &amp; Pelaporan Bagian Pendidikan</title>
+  <meta name="description" content="Pelaporan bulanan, notulen, dan daftar hadir musyawaroh Bagian Pendidikan Desa Sangatta Selatan.">
+  <meta name="theme-color" content="#064E3B">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23064E3B'/%3E%3Cpath d='M32 12l18 10H14z M18 26v18 M26 26v18 M38 26v18 M46 26v18 M12 50h40' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+  <!-- Koneksi awal ke server agar permintaan pertama lebih cepat -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <!-- Terapkan tema sebelum halaman digambar (tanpa kedipan) -->
+  <script>
+    (function () {
+      try {
+        var m = localStorage.getItem('mp_theme') || 'system';
+        var dark = m === 'dark' || (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="view" class="view">
+      <div class="boot">
+        <div class="boot-mark"></div>
+        <div class="boot-text">Memuat aplikasi…</div>
+      </div>
+    </div>
+  </div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="layer"></div>
+
+  <noscript>
+    <p style="padding:24px;font-family:sans-serif">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</p>
+  </noscript>
+
+  <script src="config.js"></script>
+  <script src="assets/js/core.js" defer></script>
+  <script src="assets/js/schema.js" defer></script>
+  <script src="assets/js/pdf.js" defer></script>
+  <script src="assets/js/form.js" defer></script>
+  <script src="assets/js/public.js" defer></script>
+  <script src="assets/js/notulen.js" defer></script>
+  <script src="assets/js/admin.js" defer></script>
+  <script src="assets/js/hadir.js" defer></script>
+  <script src="assets/js/musyawaroh.js" defer></script>
+  <script src="assets/js/pengaturan.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
+</body>
+</html>
