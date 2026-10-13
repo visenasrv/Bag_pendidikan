@@ -23,29 +23,52 @@
     const list = B.kelompok();
     const peserta = B.peserta();
     el.innerHTML = '<section class="card" style="padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 4px"><div><div class="card-title">' + icon('users') + ' Kelompok & Pengurus</div>' +
-      '<div class="card-sub">Satu daftar dipakai bersama: kelompok <b>wajib lapor</b> muncul di formulir & status laporan; semua kelompok aktif muncul di daftar hadir.</div></div>' +
+      '<div class="card-sub">Satu daftar dipakai bersama: kelompok <b>wajib lapor</b> muncul di formulir & status laporan; semua kelompok aktif muncul di daftar hadir. ' +
+      '<b>Seret ' + icon('grip', 'sm') + ' untuk mengubah urutan.</b></div></div>' +
       '<button class="btn btn-primary btn-sm" data-add>' + icon('plus') + ' Tambah</button></div>' +
-      '<div style="border-top:1px solid var(--border);margin-top:12px">' + (list.length ? list.map((k, i) => {
+      '<div style="border-top:1px solid var(--border);margin-top:12px" data-klist>' + (list.length ? list.map((k, i) => {
         const nP = peserta.filter(p => p.kelompokId === k.id).length;
         const nD = B.dapuan(k.id).length;
-        return '<div class="kel-row ' + (k.aktif ? '' : 'off') + '"><div style="display:grid">' +
-          '<button class="icon-btn" style="height:28px" data-up="' + i + '" ' + (i === 0 ? 'disabled' : '') + ' aria-label="Naik">' + icon('chevU', 'sm') + '</button>' +
-          '<button class="icon-btn" style="height:28px" data-down="' + i + '" ' + (i === list.length - 1 ? 'disabled' : '') + ' aria-label="Turun">' + icon('chevD', 'sm') + '</button></div>' +
+        return '<div class="kel-row ' + (k.aktif ? '' : 'off') + '" data-id="' + esc(k.id) + '">' +
+          '<span class="kel-drag" title="Seret untuk memindah" aria-label="Seret untuk memindah">' + icon('grip') + '</span>' +
+          '<span class="kel-no num">' + (i + 1) + '</span>' +
           '<div class="grow"><div class="name">' + esc(k.nama) + '</div><div class="chips" style="gap:6px;margin-top:4px">' +
           (k.wajib ? '<span class="badge ok">Wajib lapor</span>' : '<span class="badge">Pengurus</span>') + (k.aktif ? '' : '<span class="badge warn">Nonaktif</span>') +
           '<span class="badge">' + nP + ' peserta · ' + nD + ' dapuan</span></div></div>' +
+          '<div class="kel-move"><button class="icon-btn" data-up="' + i + '" ' + (i === 0 ? 'disabled' : '') + ' aria-label="Naik">' + icon('chevU', 'sm') + '</button>' +
+          '<button class="icon-btn" data-down="' + i + '" ' + (i === list.length - 1 ? 'disabled' : '') + ' aria-label="Turun">' + icon('chevD', 'sm') + '</button></div>' +
           '<button class="btn btn-soft btn-xs" data-edit="' + esc(k.id) + '">' + icon('edit', 'sm') + ' Ubah</button></div>';
       }).join('') : '<div class="empty">Belum ada kelompok.</div>') + '</div></section>';
     el.querySelector('[data-add]').onclick = () => modalKelompok(null);
     el.querySelectorAll('[data-edit]').forEach(b => { b.onclick = () => modalKelompok(B.kelompokById(b.getAttribute('data-edit'))); });
+    const simpanUrutan = ids => {
+      if (ids.join() === B.kelompok().map(k => k.id).join()) return;
+      Store.mutate('kelolaKelompok', { op: 'reorder', ids: ids }, d => { d.kelompok.forEach(k => { k.urutan = ids.indexOf(k.id) + 1; }); }, { label: 'Urutan kelompok' });
+      App.swrBust('cfg');
+      for (let t = App.nowWita().y - 1; t <= App.nowWita().y; t++) App.swrBust('dash_' + t);
+    };
     const move = (i, j) => {
       const ids = list.map(k => k.id);
       const t = ids[i]; ids[i] = ids[j]; ids[j] = t;
-      Store.mutate('kelolaKelompok', { op: 'reorder', ids: ids }, d => { d.kelompok.forEach(k => { k.urutan = ids.indexOf(k.id) + 1; }); }, { label: 'Urutan kelompok' });
-      App.swrBust('cfg');
+      simpanUrutan(ids);
     };
     el.querySelectorAll('[data-up]').forEach(b => { b.onclick = () => { const i = +b.getAttribute('data-up'); move(i, i - 1); }; });
     el.querySelectorAll('[data-down]').forEach(b => { b.onclick = () => { const i = +b.getAttribute('data-down'); move(i, i + 1); }; });
+    // Drag & drop (Sortable dimuat saat dibutuhkan; tombol naik/turun tetap ada sebagai cadangan)
+    const box = el.querySelector('[data-klist]');
+    App.lib('sortable').then(() => {
+      if (!box.isConnected || !box.querySelector('.kel-row')) return;
+      window.Sortable.create(box, {
+        handle: '.kel-drag', animation: 160, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen', forceFallback: true, fallbackOnBody: true,
+        onEnd: () => {
+          const rows = Array.from(box.querySelectorAll('.kel-row'));
+          rows.forEach((r, i) => { r.querySelector('.kel-no').textContent = i + 1; });
+          const ids = rows.map(r => r.getAttribute('data-id'));
+          simpanUrutan(ids);
+          App.toast('Urutan kelompok disimpan.');
+        },
+      });
+    }).catch(() => { /* tanpa drag: tombol naik/turun tetap berfungsi */ });
   }
 
   function modalKelompok(k) {
@@ -157,11 +180,11 @@
   function tabLogo(el) {
     const pend = {};
     const draw = () => {
-      el.innerHTML = '<section class="card"><div class="card-title">' + icon('image') + ' Logo Kop</div><div class="card-sub">PNG, JPG, atau SVG · maks. 1 MB. Logo otomatis diperkecil & dipakai di semua halaman, Mode Musyawaroh, dan PDF.</div>' +
-        '<div class="grid-2" style="margin-top:16px">' + ['kiri', 'kanan'].map(side => {
+      el.innerHTML = '<section class="card"><div class="card-title">' + icon('image') + ' Logo Kop</div><div class="card-sub">Satu logo · PNG, JPG, atau SVG · maks. 1 MB. Otomatis diperkecil & dipakai di semua halaman, Mode Musyawaroh, dan kop PDF.</div>' +
+        '<div class="logo-one" style="margin-top:16px">' + ['kiri'].map(side => {
           const cur = App.logo.get(side);
           const src = pend[side] || (cur && cur.dataUrl);
-          return '<div class="logo-slot"><b>Logo ' + side + '</b><div class="prev">' + (src ? '<img src="' + src + '" alt="">' : icon(side === 'kiri' ? 'landmark' : 'cap', 'lg')) + '</div>' +
+          return '<div class="logo-slot"><b>Logo Aplikasi</b><div class="prev">' + (src ? '<img src="' + src + '" alt="">' : icon(side === 'kiri' ? 'landmark' : 'cap', 'lg')) + '</div>' +
             (pend[side] ? '<span class="badge warn">Pratinjau — belum disimpan</span>' : '') +
             '<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden data-file="' + side + '">' +
             '<div class="row wrap" style="justify-content:center">' +
@@ -191,7 +214,7 @@
             delete pend[side];
             App.swrBust('cfg');
             App.logo.paint();
-            App.toast('Logo ' + side + ' tersimpan.');
+            App.toast('Logo tersimpan.');
             draw();
           } catch (e) { App.toast(e.message, 'err'); App.busy(b, false); }
         };
@@ -199,7 +222,7 @@
       el.querySelectorAll('[data-rm]').forEach(b => {
         b.onclick = async () => {
           const side = b.getAttribute('data-rm');
-          const ok = await App.confirm({ title: 'Hapus logo ' + side + '?', message: 'Logo akan diganti ikon bawaan.', ok: 'Hapus', danger: true });
+          const ok = await App.confirm({ title: 'Hapus logo?', message: 'Logo akan diganti ikon bawaan.', ok: 'Hapus', danger: true });
           if (!ok) return;
           App.busy(b, true);
           try {
@@ -320,7 +343,7 @@
     const draw = () => {
       const m = App.theme.mode();
       el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('palette') + ' Tema Tampilan</div><div class="card-sub">Pilihan diingat di perangkat ini.</div>' +
-        '<div class="theme-pick" style="margin-top:16px">' + [['light', 'Terang', 'sun'], ['dark', 'Gelap', 'moon'], ['system', 'Ikuti Perangkat', 'monitor']].map(t =>
+        '<div class="theme-pick" style="margin-top:16px">' + [['light', 'Terang', 'sun'], ['dark', 'Gelap', 'moon']].map(t =>
           '<button class="' + (m === t[0] ? 'on' : '') + '" data-m="' + t[0] + '">' + icon(t[2], 'lg') + t[1] + '</button>').join('') + '</div></section>';
       el.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => { App.theme.set(b.getAttribute('data-m')); draw(); }; });
     };

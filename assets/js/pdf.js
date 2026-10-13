@@ -18,27 +18,72 @@
     return { nama: s.namaAplikasi || 'Musyawaroh & Pelaporan Bagian Pendidikan', sub: s.subjudul || 'PPG Kutai Timur · Desa Sangatta Selatan' };
   };
 
-  /** Bersihkan HTML notulen: hanya teks + warna + tebal/miring/garis bawah + baris baru */
+  /** Bersihkan HTML notulen (v1.3: dokumen gaya Google Docs).
+   *  Hanya tag & properti gaya yang dikenal; tautan http/https/mailto; gambar data:image saja. */
+  const TAG_OK = {
+    B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, BR: 1, DIV: 1, P: 1, SPAN: 1, FONT: 1, SUB: 1, SUP: 1,
+    H1: 1, H2: 1, H3: 1, H4: 1, OL: 1, UL: 1, LI: 1, BLOCKQUOTE: 1, HR: 1, A: 1, IMG: 1,
+  };
+  const CSS_OK = ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration-line', 'font-size', 'font-family', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'list-style-type'];
+  const nilaiAman = v => v && !/url\s*\(|expression|javascript|[<>{};]/i.test(v);
   App.sanitize = function (html) {
     const doc = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html');
-    const allowed = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, BR: 1, DIV: 1, P: 1, SPAN: 1, FONT: 1 };
     const clean = node => {
       Array.from(node.childNodes).forEach(ch => {
-        if (ch.nodeType === 3) return;
-        if (ch.nodeType !== 1 || !allowed[ch.nodeName]) {
-          if (ch.nodeType === 1) { clean(ch); while (ch.firstChild) node.insertBefore(ch.firstChild, ch); }
+        if (ch.nodeType === 3) { if (ch.data.indexOf('\u200b') >= 0) ch.data = ch.data.replace(/\u200b/g, ''); return; }
+        if (ch.nodeType !== 1 || !TAG_OK[ch.nodeName]) {
+          if (ch.nodeType === 1 && !/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|TEMPLATE|META|LINK)$/.test(ch.nodeName)) { clean(ch); while (ch.firstChild) node.insertBefore(ch.firstChild, ch); }
           ch.remove();
           return;
         }
-        const color = ch.style && ch.style.color ? ch.style.color : (ch.getAttribute && ch.getAttribute('color'));
+        const st = [];
+        CSS_OK.forEach(p => { const v = ch.style ? ch.style.getPropertyValue(p) : ''; if (nilaiAman(v)) st.push(p + ':' + v); });
+        if (ch.nodeName === 'FONT') {
+          const c = ch.getAttribute('color'), f = ch.getAttribute('face');
+          if (c && /^(#[0-9a-f]{3,8}|[a-z]+)$/i.test(c)) st.push('color:' + c);
+          if (f && nilaiAman(f)) st.push('font-family:' + f);
+        }
+        const keep = {};
+        if (ch.nodeName === 'OL' && /^\d{1,4}$/.test(ch.getAttribute('start') || '')) keep.start = ch.getAttribute('start');
+        if (ch.nodeName === 'UL' && ch.className) { const k = String(ch.className).split(/\s+/).filter(x => x === 'checklist' || x === 'coret').join(' '); if (k) keep['class'] = k; }
+        if (ch.nodeName === 'LI' && ch.getAttribute('data-checked') === '1') keep['data-checked'] = '1';
+        if (ch.nodeName === 'A') {
+          const h = (ch.getAttribute('href') || '').trim();
+          if (/^(https?:|mailto:)/i.test(h)) { keep.href = h; keep.target = '_blank'; keep.rel = 'noopener noreferrer'; }
+        }
+        if (ch.nodeName === 'IMG') {
+          const src = ch.getAttribute('src') || '';
+          if (!/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+\/=\s]+$/i.test(src)) { ch.remove(); return; }
+          keep.src = src; keep.alt = '';
+        }
         Array.from(ch.attributes).forEach(a => ch.removeAttribute(a.name));
-        if (color && /^(#[0-9a-f]{3,8}|rgb\([\d\s,]+\)|[a-z]+)$/i.test(color.trim())) ch.setAttribute('style', 'color:' + color);
+        Object.keys(keep).forEach(k => ch.setAttribute(k, keep[k]));
+        if (st.length) ch.setAttribute('style', st.join(';'));
         clean(ch);
       });
     };
     const root = doc.body.firstChild;
     clean(root);
     return root.innerHTML;
+  };
+
+  /** Info kop dari sesi notulen → {tanggal, tempat} (v1.3) */
+  App.kopInfo = function (sesi) {
+    const list = (Array.isArray(sesi) ? sesi : [sesi]).filter(Boolean);
+    if (!list.length) return null;
+    const uniq = a => a.filter((x, i) => x && a.indexOf(x) === i);
+    return {
+      tanggal: uniq(list.map(s => App.fmtTanggal(s.tanggal))).join('; '),
+      tempat: uniq(list.map(s => String(s.tempat || '').trim())).join('; '),
+    };
+  };
+  /** Sesi musyawaroh yang membahas laporan periode b/t: bulan berikutnya (terakhir), lalu bulan yang sama */
+  App.sesiUntukPeriode = function (b, t) {
+    const all = (App.B && App.B.notulen()) || [];
+    const nb = +b === 12 ? 1 : +b + 1, nt = +b === 12 ? +t + 1 : +t;
+    const ym = (y, m) => y + '-' + String(m).padStart(2, '0');
+    const pick = k => all.filter(s => String(s.tanggal).slice(0, 7) === k).sort((x, y) => String(y.tanggal).localeCompare(String(x.tanggal)))[0];
+    return pick(ym(nt, nb)) || pick(ym(t, b)) || null;
   };
 
   App.pdf = {};
@@ -50,7 +95,8 @@
 
   // ───────────────────────── Penulis halaman ─────────────────────────
   class Writer {
-    constructor(Ctor) {
+    constructor(Ctor, info) {
+      this.info = info || null;      // {tanggal, tempat} dari notulen → tampil di kop
       this.doc = new Ctor({ unit: 'mm', format: 'a4', compress: true });
       this.W = 210; this.H = 297; this.M = 16;
       this.y = this.M;
@@ -65,19 +111,41 @@
 
     kop() {
       const d = this.doc, M = this.M, meta = App.meta();
-      const L = App.logo.get('kiri'), R = App.logo.get('kanan');
+      const L = App.logo.get('kiri');
       const sz = 18;
-      const img = (c, x) => {
-        if (!c) return;
-        try { d.addImage(c.dataUrl, /jpe?g/i.test(c.dataUrl.slice(5, 20)) ? 'JPEG' : 'PNG', x, this.y, sz, sz, undefined, 'FAST'); } catch (e) { /* abaikan logo */ }
-      };
-      img(L, M);
-      img(R, this.W - M - sz);
+      const y0 = this.y;
+      if (L) {
+        try { d.addImage(L.dataUrl, /jpe?g/i.test(L.dataUrl.slice(5, 20)) ? 'JPEG' : 'PNG', M, y0, sz, sz, undefined, 'FAST'); } catch (e) { /* abaikan logo */ }
+      }
+      // teks kop di tengah area kanan logo (satu logo saja sejak v1.3)
+      const cx = L ? (M + sz + 4 + this.W - M) / 2 : this.W / 2;
+      const lebar = this.W - 2 * M - (L ? 2 * (sz + 4) : 0);
       this.color(C.muted); this.font('bold', 9);
-      d.text(meta.sub.toUpperCase(), this.W / 2, this.y + 6, { align: 'center' });
+      d.text(meta.sub.toUpperCase(), cx, y0 + 5.5, { align: 'center' });
       this.color(C.deep); this.font('bold', 14);
-      d.text(d.splitTextToSize(meta.nama, this.W - 2 * M - 2 * sz - 8), this.W / 2, this.y + 12.5, { align: 'center' });
-      this.y += sz + 3;
+      const nama = d.splitTextToSize(meta.nama, lebar);
+      d.text(nama, cx, y0 + 11.5, { align: 'center', lineHeightFactor: 1.15 });
+      let yy = y0 + 11.5 + (nama.length - 1) * 5.6;
+      if (this.info && (this.info.tanggal || this.info.tempat)) {
+        yy += 6;
+        this.font('normal', 9.5); this.color(C.text);
+        const parts = [];
+        if (this.info.tanggal) parts.push(['Tanggal', this.info.tanggal]);
+        if (this.info.tempat) parts.push(['Tempat', this.info.tempat]);
+        const teks = parts.map(p => p[0] + ' : ' + p[1]).join('     ');
+        const baris = d.splitTextToSize(teks, lebar);
+        if (baris.length === 1) {
+          // label tebal, nilai biasa, rata tengah
+          const segs = []; parts.forEach((p, i) => { if (i) segs.push(['normal', '     ']); segs.push(['bold', p[0] + ' : ']); segs.push(['normal', p[1]]); });
+          const wTot = segs.reduce((a, g) => { this.font(g[0], 9.5); return a + d.getTextWidth(g[1]); }, 0);
+          let x = cx - wTot / 2;
+          segs.forEach(g => { this.font(g[0], 9.5); d.text(g[1], x, yy); x += d.getTextWidth(g[1]); });
+        } else {
+          parts.forEach((p, i) => { this.font('normal', 9.5); d.text(d.splitTextToSize(p[0] + ' : ' + p[1], lebar)[0], cx, yy + i * 4.6, { align: 'center' }); });
+          yy += (parts.length - 1) * 4.6;
+        }
+      }
+      this.y = Math.max(y0 + sz, yy + 2) + 3;
       this.draw(C.deep); d.setLineWidth(0.8); d.line(M, this.y, this.W - M, this.y);
       d.setLineWidth(0.25); d.line(M, this.y + 1.2, this.W - M, this.y + 1.2);
       this.y += 8;
@@ -168,36 +236,8 @@
       this.y += 1;
     }
 
-    /** Teks kaya (notulen) dengan warna per segmen */
-    rich(html, x0, maxX, lh) {
-      const d = this.doc;
-      const lines = richLines(html);
-      lines.forEach(segs => {
-        let x = x0;
-        this.ensure(lh);
-        let atStart = true;
-        const tokens = [];
-        segs.forEach(s => s.text.split(/(\s+)/).forEach(t => { if (t) tokens.push({ t: t, s: s }); }));
-        if (!tokens.length) { this.y += lh * 0.6; return; }
-        tokens.forEach(tok => {
-          const ws = /^\s+$/.test(tok.t);
-          if (ws && atStart) return;
-          const st = tok.s.bold && tok.s.italic ? 'bolditalic' : tok.s.bold ? 'bold' : tok.s.italic ? 'italic' : 'normal';
-          this.font(st, 10.5);
-          const w = d.getTextWidth(ws ? ' ' : tok.t);
-          if (!ws && x + w > maxX && !atStart) {
-            this.y += lh; x = x0; this.ensure(lh);
-          }
-          if (ws) { x += w; return; }
-          d.setTextColor(tok.s.rgb[0], tok.s.rgb[1], tok.s.rgb[2]);
-          d.text(tok.t, x, this.y + 3.8);
-          if (tok.s.underline) { d.setDrawColor(tok.s.rgb[0], tok.s.rgb[1], tok.s.rgb[2]); d.setLineWidth(0.2); d.line(x, this.y + 4.5, x + w, this.y + 4.5); }
-          x += w;
-          atStart = false;
-        });
-        this.y += lh;
-      });
-    }
+    /** Dokumen notulen (HTML) → PDF, mengikuti tata letak browser (lihat renderDoc) */
+    docHtml(html) { renderDoc(this, html); }
 
     footer() {
       const d = this.doc, n = d.getNumberOfPages(), meta = App.meta();
@@ -222,42 +262,167 @@
     return m ? [+m[1], +m[2], +m[3]] : [31, 41, 55];
   }
 
-  /** HTML → baris berisi segmen {text, rgb, bold, italic, underline} memakai getComputedStyle */
-  function richLines(html) {
+  // ───────────────────────── Dokumen notulen → PDF ─────────────────────────
+  // Dokumen ditata dulu oleh browser (lebar = lebar isi A4), lalu setiap kata
+  // digambar di posisi yang sama. Hasilnya: perataan, indentasi, daftar,
+  // ukuran huruf, warna, stabilo, garis bawah/coret, & gambar sama seperti layar.
+  const PX = 0.264583;   // 1 px CSS dalam mm (96 dpi)
+  const ROMAWI = n => { let r = ''; [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']].forEach(p => { while (n >= p[0]) { r += p[1]; n -= p[0]; } }); return r; };
+  const HURUF = n => { let r = ''; while (n > 0) { n--; r = String.fromCharCode(97 + (n % 26)) + r; n = Math.floor(n / 26); } return r; };
+  function nomorDaftar(type, n) {
+    if (/lower-alpha|lower-latin/.test(type)) return HURUF(n);
+    if (/upper-alpha|upper-latin/.test(type)) return HURUF(n).toUpperCase();
+    if (/lower-roman/.test(type)) return ROMAWI(n);
+    if (/upper-roman/.test(type)) return ROMAWI(n).toUpperCase();
+    return String(n);
+  }
+  function rgbOf(s) {
+    const m = String(s || '').match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/);
+    if (!m) return null;
+    if (m[4] !== undefined && +m[4] === 0) return null;
+    return [+m[1], +m[2], +m[3]];
+  }
+  function fontPdf(cs) {
+    const f = String(cs.fontFamily).toLowerCase();
+    const fam = /courier|mono/.test(f) ? 'courier' : (/times|georgia|garamond|serif/.test(f) && !/sans/.test(f) ? 'times' : 'helvetica');
+    const b = parseInt(cs.fontWeight, 10) >= 600, i = cs.fontStyle === 'italic' || cs.fontStyle === 'oblique';
+    return { fam: fam, st: b && i ? 'bolditalic' : b ? 'bold' : i ? 'italic' : 'normal' };
+  }
+  function dekorasi(el, host) {
+    const o = { u: false, s: false, bg: null };
+    for (let e = el; e && e !== host; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      const t = cs.textDecorationLine || cs.textDecoration || '';
+      if (t.indexOf('underline') >= 0) o.u = true;
+      if (t.indexOf('line-through') >= 0) o.s = true;
+      if (!o.bg && cs.display.indexOf('inline') === 0) o.bg = rgbOf(cs.backgroundColor);
+    }
+    return o;
+  }
+
+  function renderDoc(w, html) {
+    const d = w.doc, M = w.M, lebarMm = w.W - 2 * M;
     const host = document.createElement('div');
-    host.className = 'paper';
-    host.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;visibility:hidden';
+    host.className = 'doc-body doc-render';
+    host.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + Math.round(lebarMm / PX) + 'px;visibility:hidden';
     host.innerHTML = App.sanitize(html);
     document.body.appendChild(host);
-    const out = [];
-    let cur = [];
-    const flush = () => { out.push(cur); cur = []; };
-    const walk = node => {
-      Array.from(node.childNodes).forEach(ch => {
-        if (ch.nodeType === 3) {
-          const t = ch.nodeValue.replace(/\s+/g, ' ');
-          if (!t) return;
-          const cs = getComputedStyle(ch.parentElement);
-          cur.push({
-            text: t, rgb: parseRgb(cs.color), bold: parseInt(cs.fontWeight, 10) >= 600, italic: cs.fontStyle === 'italic',
-            underline: (cs.textDecorationLine || cs.textDecoration || '').indexOf('underline') >= 0,
+    const H = host.getBoundingClientRect();
+    const items = [];
+    const rel = r => ({ top: r.top - H.top, bottom: r.bottom - H.top, left: r.left - H.left, right: r.right - H.left, w: r.width, h: r.height });
+    try {
+      // 1) kata-kata
+      const tw = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+      let node;
+      const rg = document.createRange();
+      while ((node = tw.nextNode())) {
+        const txt = node.data;
+        if (!/\S/.test(txt)) continue;
+        const el = node.parentElement;
+        const cs = getComputedStyle(el);
+        const fpx = parseFloat(cs.fontSize) || 14.67;
+        const f = fontPdf(cs);
+        const col = rgbOf(cs.color) || [0, 0, 0];
+        const dk = dekorasi(el, host);
+        if (dk.bg || dk.u || dk.s) {
+          rg.selectNodeContents(node);
+          Array.from(rg.getClientRects()).forEach(r0 => {
+            const r = rel(r0);
+            if (r.w < 0.5) return;
+            items.push({ k: 'deco', top: r.top, bottom: r.bottom, r: r, fpx: fpx, bg: dk.bg, u: dk.u, s: dk.s, col: col });
           });
-        } else if (ch.nodeName === 'BR') {
-          flush();
-        } else if (ch.nodeName === 'DIV' || ch.nodeName === 'P') {
-          if (cur.length) flush();
-          walk(ch);
-          if (cur.length) flush();
-        } else if (ch.nodeType === 1) {
-          walk(ch);
+        }
+        const re = /\S+/g;
+        let m;
+        while ((m = re.exec(txt))) {
+          rg.setStart(node, m.index); rg.setEnd(node, m.index + m[0].length);
+          const rs = rg.getClientRects();
+          if (!rs.length) continue;
+          const r = rel(rs[0]);
+          items.push({ k: 'txt', top: r.top, bottom: r.bottom, r: r, t: m[0], f: f, pt: fpx * 0.75, fpx: fpx, col: col });
+        }
+      }
+      // 2) penanda daftar (nomor / bulatan / kotak centang)
+      host.querySelectorAll('li').forEach(li => {
+        const list = li.parentElement;
+        if (!list || !/^(OL|UL)$/.test(list.nodeName)) return;
+        rg.selectNodeContents(li);
+        const first = Array.from(rg.getClientRects()).find(r => r.width > 0 || r.height > 0);
+        const lr = li.getBoundingClientRect();
+        const r = rel(first || lr);
+        const cs = getComputedStyle(li);
+        const fpx = parseFloat(cs.fontSize) || 14.67;
+        const base = { k: 'mark', top: r.top, bottom: r.bottom, x: lr.left - H.left, base: r.bottom - r.h * 0.2, fpx: fpx, col: rgbOf(cs.color) || [0, 0, 0] };
+        if (list.classList.contains('checklist')) { items.push(Object.assign(base, { m: 'cek', on: li.getAttribute('data-checked') === '1' })); return; }
+        const type = getComputedStyle(list).listStyleType;
+        if (list.nodeName === 'OL') {
+          const idx = Array.from(list.children).filter(x => x.nodeName === 'LI').indexOf(li);
+          const start = parseInt(list.getAttribute('start') || '1', 10) || 1;
+          items.push(Object.assign(base, { m: 'teks', t: nomorDaftar(type, start + idx) + '.', f: fontPdf(cs), pt: fpx * 0.75 }));
+        } else {
+          items.push(Object.assign(base, { m: /square/.test(type) ? 'kotak' : /circle/.test(type) ? 'bulat0' : 'bulat' }));
         }
       });
-    };
-    walk(host);
-    if (cur.length) flush();
-    host.remove();
-    while (out.length && !out[out.length - 1].length) out.pop();
-    return out.length ? out : [[]];
+      // 3) garis & gambar
+      host.querySelectorAll('hr').forEach(hr => { const r = rel(hr.getBoundingClientRect()); items.push({ k: 'hr', top: r.top, bottom: r.bottom + 1, r: r }); });
+      host.querySelectorAll('img').forEach(im => { const r = rel(im.getBoundingClientRect()); if (r.w > 1 && r.h > 1) items.push({ k: 'img', top: r.top, bottom: r.bottom, r: r, src: im.getAttribute('src') }); });
+    } finally { host.remove(); }
+
+    // Kelompokkan per baris visual, lalu pecah ke halaman per baris (tidak memotong teks)
+    items.sort((a, b) => a.top - b.top || (a.k === 'deco' ? -1 : 1));
+    const baris = [];
+    items.forEach(it => {
+      const b = baris[baris.length - 1];
+      if (b && it.k !== 'img' && b.img !== true && it.top < b.bottom - 2) { b.items.push(it); b.bottom = Math.max(b.bottom, it.bottom); }
+      else baris.push({ top: it.top, bottom: it.bottom, items: [it], img: it.k === 'img' });
+    });
+    const batas = w.H - 18;
+    let y0 = w.y, p0 = baris.length ? baris[0].top : 0, akhir = w.y;
+    baris.forEach(b => {
+      if (y0 + (b.bottom - p0) * PX > batas && (b.top - p0) * PX > 0.5) { w.newPage(); y0 = w.y; p0 = b.top; }
+      b.items.forEach(it => gambar(d, it, M, y0, p0, batas));
+      akhir = Math.max(akhir, y0 + (b.bottom - p0) * PX);
+    });
+    w.y = akhir + 3;
+  }
+
+  function gambar(d, it, M, y0, p0, batas) {
+    const X = px => M + px * PX, Y = px => y0 + (px - p0) * PX;
+    if (it.k === 'deco') {
+      const r = it.r, base = r.bottom - r.h * 0.2;
+      if (it.bg) { d.setFillColor(it.bg[0], it.bg[1], it.bg[2]); d.rect(X(r.left), Y(r.top), r.w * PX, r.h * PX, 'F'); }
+      d.setDrawColor(it.col[0], it.col[1], it.col[2]); d.setLineWidth(Math.max(0.15, it.fpx * 0.06 * PX));
+      if (it.u) d.line(X(r.left), Y(base + it.fpx * 0.1), X(r.right), Y(base + it.fpx * 0.1));
+      if (it.s) d.line(X(r.left), Y(base - it.fpx * 0.3), X(r.right), Y(base - it.fpx * 0.3));
+    } else if (it.k === 'txt') {
+      d.setFont(it.f.fam, it.f.st);
+      let pt = it.pt;
+      d.setFontSize(pt);
+      const wPdf = d.getTextWidth(it.t), wBrowser = it.r.w * PX;
+      if (wBrowser > 0 && wPdf > wBrowser * 1.03) { pt = pt * wBrowser / wPdf; d.setFontSize(pt); }   // cegah kata bertumpuk
+      d.setTextColor(it.col[0], it.col[1], it.col[2]);
+      d.text(it.t, X(it.r.left), Y(it.r.bottom - it.r.h * 0.2));
+    } else if (it.k === 'mark') {
+      const yb = Y(it.base), s = it.fpx * PX;
+      d.setTextColor(it.col[0], it.col[1], it.col[2]); d.setDrawColor(it.col[0], it.col[1], it.col[2]); d.setFillColor(it.col[0], it.col[1], it.col[2]);
+      if (it.m === 'teks') { d.setFont(it.f.fam, it.f.st); d.setFontSize(it.pt); d.text(it.t, X(it.x) - s * 0.35, yb, { align: 'right' }); }
+      else if (it.m === 'bulat') d.circle(X(it.x) - s * 0.75, yb - s * 0.3, s * 0.13, 'F');
+      else if (it.m === 'bulat0') { d.setLineWidth(0.2); d.circle(X(it.x) - s * 0.75, yb - s * 0.3, s * 0.13, 'S'); }
+      else if (it.m === 'kotak') d.rect(X(it.x) - s * 0.88, yb - s * 0.43, s * 0.26, s * 0.26, 'F');
+      else if (it.m === 'cek') {
+        const k = s * 0.72, x = X(it.x) - s * 1.25, y = yb - k * 0.95;
+        d.setLineWidth(0.25); d.setDrawColor(95, 99, 104);
+        if (it.on) { d.setFillColor(26, 115, 232); d.setDrawColor(26, 115, 232); d.roundedRect(x, y, k, k, 0.4, 0.4, 'FD'); d.setDrawColor(255, 255, 255); d.setLineWidth(0.4); d.line(x + k * 0.2, y + k * 0.52, x + k * 0.42, y + k * 0.74); d.line(x + k * 0.42, y + k * 0.74, x + k * 0.8, y + k * 0.28); }
+        else d.roundedRect(x, y, k, k, 0.4, 0.4, 'S');
+      }
+    } else if (it.k === 'hr') {
+      d.setDrawColor(200, 200, 200); d.setLineWidth(0.3); d.line(X(it.r.left), Y(it.r.top), X(it.r.right), Y(it.r.top));
+    } else if (it.k === 'img') {
+      let wMm = it.r.w * PX, hMm = it.r.h * PX;
+      const maks = batas - Y(it.r.top);
+      if (hMm > maks && maks > 20) { wMm = wMm * maks / hMm; hMm = maks; }
+      try { d.addImage(it.src, /^data:image\/jpe?g/i.test(it.src) ? 'JPEG' : 'PNG', X(it.r.left), Y(it.r.top), wMm, hMm, undefined, 'FAST'); } catch (e) { /* gambar rusak dilewati */ }
+    }
   }
 
   // ───────────────────────── Isi laporan ─────────────────────────
@@ -282,6 +447,11 @@
       w.section(s.huruf, s.judul);
       w.kv(fs.map(f => [f.label, App.fmtField(f, l[f.k], l)]));
     });
+    const tg = App.tanggapanList ? App.tanggapanList(l.ID) : [];
+    if (tg.length) {
+      w.section('#', 'Tanggapan Musyawaroh');
+      w.kv(tg.map(t => [App.tanggapanLabel(t.bidang), t.isi]));
+    }
   }
 
   function ringkasanBody(w, b, t, list, wajib) {
@@ -291,7 +461,7 @@
     w.statBoxes([
       { l: 'Total Generus', v: r.total, hero: true }, { l: 'Caberawit', v: r.caberawit }, { l: 'Praremaja', v: r.praremaja }, { l: 'Remaja', v: r.remaja },
     ]);
-    w.statBoxes([{ l: 'Pranikah', v: r.pranikah }, { l: 'Generus Mondok', v: r.mondok }, { l: 'Sudah Mubaligh', v: r.mubaligh }]);
+    w.statBoxes([{ l: 'Pranikah', v: r.pranikah }, { l: 'Muda-Mudi', v: r.mudamudi }, { l: 'Generus Mondok', v: r.mondok }, { l: 'Sudah Mubaligh', v: r.mubaligh }]);
     w.section('#', 'Status Pelaporan');
     const d = w.doc, M = w.M;
     const cols = [M, M + 10, M + 72, M + 106, M + 152];
@@ -327,21 +497,15 @@
       d.text(App.fmtTanggal(s.tanggal), M + 4, w.y + 6);
       w.font('normal', 9.5); d.text(s.tempat || '', w.W - M - 4, w.y + 6, { align: 'right' });
       w.y += 13;
-      (s.poin || []).forEach(p => {
-        w.ensure(7);
-        w.font('bold', 10.5); w.color(C.deep);
-        d.text(p.no + '.', M + 7, w.y + 3.8, { align: 'right' });
-        w.rich(p.isi, M + 10, w.W - M, 5.4);
-        w.y += 1.2;
-        w.draw([237, 231, 217]); d.setLineWidth(0.15); d.line(M + 10, w.y - 0.6, w.W - M, w.y - 0.6);
-        w.y += 1;
-      });
+      w.docHtml(App.notulenDoc(s));
     });
   }
 
   // ───────────────────────── API publik pdf ─────────────────────────
-  App.pdf.laporan = async function (l) {
-    const w = new Writer(await jsPDFCtor());
+  /** info = {tanggal, tempat} untuk kop; bila tidak diberikan → sesi musyawaroh periode laporan (admin) */
+  const infoLaporan = (l, info) => (info !== undefined ? info : (App.B && App.B.notulen ? App.kopInfo(App.sesiUntukPeriode(l.Bulan, l.Tahun)) : null));
+  App.pdf.laporan = async function (l, info) {
+    const w = new Writer(await jsPDFCtor(), infoLaporan(l, info));
     w.kop();
     laporanBody(w, l);
     w.save('Laporan ' + namaKel(l) + ' ' + App.periode(l.Bulan, l.Tahun));
@@ -363,8 +527,8 @@
     w.save('Bukti Laporan ' + namaKel(l) + ' ' + App.periode(l.Bulan, l.Tahun));
   };
 
-  App.pdf.gabungan = async function (b, t, list, wajib, sessions) {
-    const w = new Writer(await jsPDFCtor());
+  App.pdf.gabungan = async function (b, t, list, wajib, sessions, info) {
+    const w = new Writer(await jsPDFCtor(), info !== undefined ? info : (sessions && sessions.length ? App.kopInfo(sessions) : App.kopInfo(App.sesiUntukPeriode(b, t))));
     w.kop();
     if (sessions && sessions.length) {
       notulenBody(w, sessions);
@@ -379,7 +543,7 @@
   };
 
   App.pdf.notulen = async function (sessions) {
-    const w = new Writer(await jsPDFCtor());
+    const w = new Writer(await jsPDFCtor(), App.kopInfo(sessions));
     w.kop();
     notulenBody(w, sessions);
     w.save('Notulen ' + (sessions.length === 1 ? App.fmtTanggal(sessions[0].tanggal) : sessions.length + ' sesi'));

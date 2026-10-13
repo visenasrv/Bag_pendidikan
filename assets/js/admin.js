@@ -153,7 +153,7 @@
     const m = App.modal({
       title: 'Menu Lainnya',
       body: '<div class="stack">' + extra.map(n => '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-p="' + n.p + '">' + icon(n.i) + ' ' + n.t + '</button>').join('') +
-        '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-theme>' + icon('palette') + ' Ganti Tema (Terang/Gelap/Perangkat)</button>' +
+        '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-theme>' + icon('palette') + ' Ganti Tema (Terang/Gelap)</button>' +
         '<button class="btn btn-danger btn-block" style="justify-content:flex-start" data-out>' + icon('logout') + ' Keluar</button></div>',
     });
     m.el.querySelectorAll('[data-p]').forEach(b => { b.onclick = () => { m.close(true); App.go(b.getAttribute('data-p')); }; });
@@ -184,7 +184,7 @@
     if (App.auth.valid()) { App.go(lanjut, true); return; }
     const root = App.mount('<div class="pub" style="padding-top:24px">' +
       '<div style="text-align:right"><button class="icon-btn" data-theme aria-label="Ganti tema">' + icon('palette') + '</button></div>' +
-      '<div style="text-align:center;margin:8px 0 20px"><div style="display:inline-flex;gap:10px">' + App.logo.html('kiri') + App.logo.html('kanan') + '</div>' +
+      '<div style="text-align:center;margin:8px 0 20px"><div style="display:inline-flex;gap:10px">' + App.logo.html('kiri') + '</div>' +
       '<h1 style="font-size:24px;margin-top:16px;font-weight:800">Masuk Admin</h1><p class="muted">Bagian Pendidikan Desa · ' + esc(App.meta().nama) + '</p></div>' +
       '<form class="card lg" data-form autocomplete="on"><div class="field"><label for="u">Username</label><input class="input" id="u" name="username" autocomplete="username" autocapitalize="none" required></div>' +
       '<div class="field"><label for="pw">Password</label><div class="input-wrap"><input class="input" id="pw" name="password" type="password" autocomplete="current-password" required style="padding-right:52px">' +
@@ -223,58 +223,33 @@
   });
 
   // ───────────────────────── DASHBOARD ─────────────────────────
-  let charts = [];
-  function destroyCharts() { charts.forEach(c => { try { c.destroy(); } catch (e) { /* abaikan */ } }); charts = []; }
-  const WARNA_JENJANG = { caberawit: '#064E3B', praremaja: '#059669', remaja: '#6EE7B7', pranikah: '#F2C94C' };
-
+  // Penggambar bersama ada di dash.js (dipakai juga dashboard publik)
   App.route('/admin/dashboard', page('dashboard', 'Dashboard', function (c) {
-    destroyCharts();
-    App.onLeave(destroyCharts);
     const per = App.periodeAktif;
-    const wajib = B.wajib();
-    const list = B.laporanPeriode(per.bulan, per.tahun);
     const ku = B.kunci(per.bulan, per.tahun);
-    const r = App.rekap(list);
-    const sudah = wajib.filter(k => list.some(l => l.KelompokID === k.id));
-
+    const m = App.dashModel.admin(per);
+    let kel = App.ls.get('mp_dash_kel') || '';
+    if (kel && !App.dashKelompok(m).some(k => k.id === kel)) kel = '';
     c.innerHTML =
       '<div class="page-head"><div><h1>Dashboard</h1><p>Ringkasan rekap generus & kepatuhan laporan kelompok binaan.</p></div><div class="actions" data-acts></div></div>' +
-      '<section class="card"><div class="card-head" style="flex-wrap:wrap"><div><div class="card-title">Status Laporan ' + App.periode(per.bulan, per.tahun) + '</div><div class="card-sub"><b>' + sudah.length + '/' + wajib.length + '</b> kelompok sudah lapor</div></div>' +
-      (ku.terkunci ? '<span class="badge">' + icon('lock', 'sm') + ' Bulan Terkunci' + (ku.tutupBaru ? ' · kiriman baru ditutup' : '') + '</span>' : '<span class="badge ok">' + icon('unlock', 'sm') + ' Bulan Terbuka</span>') + '</div>' +
-      '<div class="status-grid">' + (wajib.length ? wajib.map(k => {
-        const l = list.find(x => x.KelompokID === k.id);
-        return '<div class="status-card ' + (l ? '' : 'pending') + '" ' + (l ? 'data-open="' + l.ID + '" style="cursor:pointer"' : '') + '><div class="top"><b>' + esc(k.nama) + '</b>' +
-          (l ? '<span class="badge ok">' + icon('checkCircle', 'sm') + ' Sudah</span>' : '<span class="badge warn">' + icon('clock', 'sm') + ' Belum</span>') + '</div>' +
-          '<small>' + (l ? 'Terkirim ' + esc(App.fmtWaktu(l.WaktuKirim, { wita: true })) : 'Menunggu pengiriman') + '</small>' +
-          (l ? '<small class="num">' + App.totalGenerus(l) + ' generus</small>' : '') + '</div>';
-      }).join('') : '<div class="empty">Belum ada kelompok wajib lapor. Atur di Pengaturan.</div>') + '</div></section>' +
-
-      '<div class="grid" style="margin-top:16px;grid-template-columns:1fr">' +
-      '<div class="stat-hero"><div class="row between"><div class="lbl">Total Generus · ' + App.periode(per.bulan, per.tahun) + '</div><span class="badge deep">' + icon('users', 'sm') + '</span></div>' +
-      '<div class="val num">' + App.fmtNum(r.total) + '<small>Orang</small></div><div class="sub">Caberawit–Pranikah · dari ' + list.length + '/' + wajib.length + ' kelompok yang sudah lapor</div></div>' +
-      '<div class="stats wide">' +
-      [['Caberawit', r.caberawit, 'smile', 'Usia TK – SD'], ['Praremaja', r.praremaja, 'cap', 'Usia SMP'], ['Remaja', r.remaja, 'users', 'Usia SMA / SMK'], ['Pranikah', r.pranikah, 'heart', 'Mandiri & usia nikah'], ['Mondok', r.mondok, 'building', 'Sedang mondok'], ['Mubaligh', r.mubaligh, 'mic', 'Lulusan pondok']]
-        .map(x => '<div class="stat"><div class="lbl">' + x[0] + icon(x[2], 'sm') + '</div><div class="val">' + App.fmtNum(x[1]) + '<small>orang</small></div><div class="sub">' + x[3] + '</div></div>').join('') +
-      '</div></div>' +
-
-      '<div class="grid-2" style="margin-top:16px">' +
-      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('bar') + ' Jumlah Generus per Kelompok</div><div class="card-sub">Distribusi jenjang · ' + App.periode(per.bulan, per.tahun) + '</div></div></div><div class="chart-box"><canvas data-c1></canvas></div></section>' +
-      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('chart') + ' Perkembangan Generus ' + per.tahun + '</div><div class="card-sub">Jan–Des · klik legenda untuk tampil/sembunyi</div></div></div><div class="chart-box"><canvas data-c2></canvas></div></section>' +
-      '</div>' +
-
+      '<div data-dash></div>' +
       '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 0"><div><div class="card-title">' + icon('file') + ' Laporan Terbaru Masuk</div><div class="card-sub">Riwayat pengiriman & perubahan laporan</div></div><a class="btn btn-ghost btn-sm" href="#/admin/laporan">Lihat semua ' + icon('arrowR', 'sm') + '</a></div>' +
       laporanTable(B.laporan().slice().sort((a, b) => String(b.WaktuUbah || b.WaktuKirim).localeCompare(String(a.WaktuUbah || a.WaktuKirim))).slice(0, 5), { compact: true }) + '</section>';
-
+    const dash = c.querySelector('[data-dash]');
+    App.onLeave(() => App.dashDestroy(dash));
+    const gambar = () => App.dashRender(dash, m, { kelompok: kel, onOpen: it => it && it.lapId && App.laporanDrawer.open(it.lapId) });
     const acts = c.querySelector('[data-acts]');
+    const fk = App.html('<div class="period-pick">' + App.kelompokSelect(m, kel) + '</div>');
+    fk.querySelector('[data-kel]').onchange = e => { kel = e.target.value; App.ls.set('mp_dash_kel', kel); gambar(); };
+    acts.appendChild(fk);
     acts.appendChild(periodPick(per, (b, t) => { App.setPeriode(b, t); App.render(); }));
     const kb = App.html(ku.terkunci
       ? '<button class="btn btn-outline btn-sm">' + icon('unlock') + ' Buka Kunci</button>'
       : '<button class="btn btn-deep btn-sm">' + icon('lock') + ' Kunci Bulan Ini</button>');
     kb.onclick = () => toggleKunci(per, ku);
     acts.appendChild(kb);
-    c.querySelectorAll('[data-open]').forEach(el => { el.onclick = () => App.laporanDrawer.open(el.getAttribute('data-open')); });
     bindTableRows(c);
-    drawCharts(c, per, wajib);
+    gambar();
   }));
 
   async function toggleKunci(per, ku) {
@@ -304,75 +279,6 @@
   }
   A.toggleKunci = toggleKunci;
 
-  async function drawCharts(c, per, wajib) {
-    try { await App.lib('chart'); } catch (e) {
-      c.querySelectorAll('.chart-box').forEach(b => { b.innerHTML = '<div class="empty">' + icon('cloudOff') + 'Grafik tidak dapat dimuat (periksa koneksi).</div>'; });
-      return;
-    }
-    if (!c.isConnected || !c.querySelector('[data-c1]')) return;
-    const Chart = window.Chart;
-    const dark = App.theme.isDark();
-    const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(6,78,59,.08)';
-    const tick = dark ? '#9DB3AA' : '#5B6B65';
-    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-    Chart.defaults.color = tick;
-    const list = B.laporanPeriode(per.bulan, per.tahun);
-    const kel = wajib.slice();
-    list.forEach(l => { if (!kel.some(k => k.id === l.KelompokID)) kel.push({ id: l.KelompokID, nama: l.NamaKelompok }); });
-    const val = (k, f) => { const l = list.find(x => x.KelompokID === k.id); return l ? App.num(l[f]) : 0; };
-    const ds = [['Caberawit', 'Jml_Caberawit', 'caberawit'], ['Praremaja', 'Jml_Praremaja', 'praremaja'], ['Remaja', 'Jml_Remaja', 'remaja'], ['Pranikah', 'Jml_Pranikah', 'pranikah']];
-    const totalLabel = {
-      id: 'totalLabel',
-      afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
-        const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-        ctx.save();
-        ctx.font = '700 12px ' + Chart.defaults.font.family;
-        ctx.fillStyle = dark ? '#E3F5ED' : '#0F1F1A';
-        ctx.textAlign = 'center';
-        meta.data.forEach((bar, i) => {
-          const tot = chart.data.datasets.reduce((s, d, di) => s + (chart.isDatasetVisible(di) ? (d.data[i] || 0) : 0), 0);
-          if (tot) ctx.fillText(tot, bar.x, bar.y - 6);
-        });
-        ctx.restore();
-      },
-    };
-    charts.push(new Chart(c.querySelector('[data-c1]'), {
-      type: 'bar',
-      data: { labels: kel.map(k => k.nama), datasets: ds.map(d => ({ label: d[0], data: kel.map(k => val(k, d[1])), backgroundColor: WARNA_JENJANG[d[2]], borderRadius: 4, maxBarThickness: 56 })) },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
-        layout: { padding: { top: 18 } },
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } }, tooltip: { mode: 'index', intersect: false } },
-        scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: grid }, ticks: { precision: 0 } } },
-      },
-      plugins: [totalLabel],
-    }));
-    // Tren bulanan: bulan tanpa laporan = kosong (null), bukan 0
-    const semua = B.laporan().filter(l => +l.Tahun === per.tahun);
-    const bulanData = App.BULAN_PENDEK.map((_, i) => {
-      const ls = semua.filter(l => +l.Bulan === i + 1);
-      return ls.length ? App.rekap(ls) : null;
-    });
-    const line = (label, key, color, wide) => ({
-      label: label, data: bulanData.map(r => (r ? r[key] : null)), borderColor: color, backgroundColor: wide ? (dark ? 'rgba(16,185,129,.15)' : 'rgba(4,120,87,.10)') : color,
-      fill: !!wide, tension: .3, spanGaps: false, borderWidth: wide ? 3 : 2, pointRadius: wide ? 4 : 2.5, pointHoverRadius: 6,
-    });
-    charts.push(new Chart(c.querySelector('[data-c2]'), {
-      type: 'line',
-      data: {
-        labels: App.BULAN_PENDEK,
-        datasets: [line('Total Generus', 'total', dark ? '#34D399' : '#047857', true), line('Caberawit', 'caberawit', dark ? '#A7F3D0' : '#064E3B'), line('Praremaja', 'praremaja', '#10B981'), line('Remaja', 'remaja', '#6EE7B7'), line('Pranikah', 'pranikah', '#E0B43C')],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } } },
-        scales: { x: { grid: { display: false } }, y: { grid: { color: grid }, ticks: { precision: 0 } } },
-      },
-    }));
-  }
-
   // ───────────────────────── Tabel laporan ─────────────────────────
   function laporanTable(rows, opt) {
     opt = opt || {};
@@ -400,6 +306,9 @@
   App.route('/admin/laporan', page('laporan', 'Kelola Laporan', function (c) {
     App.ls.set('mp_seen_laporan', Date.now());
     if (!c.querySelector('[data-tbl]')) {
+      // v1.3: setiap kali halaman dibuka, filter otomatis ke periode laporan berjalan
+      const kini = App.bulanLalu();
+      filt.bulan = String(kini.bulan); filt.tahun = String(kini.tahun); filt.page = 1;
       c.innerHTML =
         '<div class="page-head"><div><h1>Kelola Laporan</h1><p>Manajemen & validasi entri pelaporan bulanan.</p></div><div class="actions">' +
         '<button class="btn btn-soft btn-sm" data-csv>' + icon('download') + ' Ekspor Rekap</button><a class="btn btn-primary btn-sm" href="#/admin/laporan/baru">' + icon('plusCircle') + ' Tambah Laporan</a></div></div>' +
@@ -511,7 +420,7 @@
         (l.WaktuUbah ? '<span class="badge ok">' + icon('edit', 'sm') + ' Diubah ' + esc(App.fmtWaktu(l.WaktuUbah)) + '</span>' : '') +
         '<span class="badge ok">' + icon('user', 'sm') + ' Oleh: ' + esc(l.DiubahOleh || 'Kelompok') + '</span>' +
         (ku.terkunci ? '<span class="badge">' + icon('lock', 'sm') + ' Terkunci</span>' : '') + '</div></div>' +
-        '<div class="drawer-body">' + App.FORM.map(s => sectionDetail(s, l, openSet.has(s.id))).join('') +
+        '<div class="drawer-body">' + App.FORM.map(s => sectionDetail(s, l, openSet.has(s.id))).join('') + tanggapanDetail(l) +
         '<div class="kode-card"><span class="ico-tile">' + icon('key') + '</span><div class="grow"><div class="section-label">Kode Koreksi Laporan</div><div style="font-size:18px;letter-spacing:.3em;font-weight:800">' + (l.punyaKode ? '••••••' : '<span class="muted" style="letter-spacing:0;font-size:14px">Belum ada kode</span>') + '</div></div>' +
         '<button class="btn btn-outline btn-xs" style="border-color:var(--gold);color:var(--warn-fg)" data-kode>' + icon('refresh', 'sm') + ' Buat Kode Baru</button></div></div>' +
         '<div class="drawer-foot"><button class="btn btn-danger btn-sm" data-del>' + icon('trash') + ' Hapus</button><span class="sp"></span>' +
@@ -524,6 +433,13 @@
       q('[data-del]').onclick = () => hapusLaporan(l);
     },
   };
+
+  function tanggapanDetail(l) {
+    const tg = App.tanggapanList(l.ID);
+    if (!tg.length) return '';
+    return '<section class="tg-detail"><div class="section-label" style="color:var(--link)">' + icon('reply', 'sm') + ' Tanggapan Musyawaroh (' + tg.length + ')</div>' +
+      tg.map(t => '<div class="tg-resp"><div class="h">' + esc(App.tanggapanLabel(t.bidang)) + '</div><div class="b">' + esc(t.isi) + '</div></div>').join('') + '</section>';
+  }
 
   function sectionDetail(s, l, open) {
     const fs = App.visibleFields(s, l).filter(f => ['KelompokID', 'Bulan', 'Tahun'].indexOf(f.k) < 0);
@@ -647,7 +563,7 @@
     const n = B.notulen().length;
     c.innerHTML = '<div class="page-head"><div><h1>Notulen Musyawaroh</h1><p>Catat, lihat, ubah, dan unduh notulen per sesi.</p></div></div>' +
       '<div class="tabs"><button class="tab ' + (tab === 'catat' ? 'on' : '') + '" data-tab="catat">' + icon('edit', 'sm') + ' Catat Notulen</button><button class="tab ' + (tab === 'daftar' ? 'on' : '') + '" data-tab="daftar">Daftar Notulen (' + n + ')</button></div>' +
-      '<div data-body style="max-width:900px"></div>';
+      '<div data-body style="max-width:' + (tab === 'catat' ? '1040px' : '900px') + '"></div>';
     c.querySelectorAll('[data-tab]').forEach(b => {
       b.onclick = () => {
         const t = b.getAttribute('data-tab');
@@ -673,7 +589,7 @@
           } else go();
         },
         onDelete: async s => {
-          const ok = await App.confirm({ title: 'Hapus sesi notulen?', html: 'Sesi <b>' + esc(App.fmtTanggal(s.tanggal)) + ' — ' + esc(s.tempat) + '</b> (' + s.poin.length + ' poin) akan dihapus permanen.', ok: 'Hapus Sesi', danger: true });
+          const ok = await App.confirm({ title: 'Hapus sesi notulen?', html: 'Sesi <b>' + esc(App.fmtTanggal(s.tanggal)) + ' — ' + esc(s.tempat) + '</b> (' + esc(App.notulenInfo(s)) + ') akan dihapus permanen.', ok: 'Hapus Sesi', danger: true });
           if (!ok) return;
           Store.mutate('hapusNotulen', { sesiId: s.sesiId }, d => { d.notulen = d.notulen.filter(x => x.sesiId !== s.sesiId); }, { label: 'Hapus notulen' });
           App.swrBust('notulen');
@@ -689,10 +605,10 @@
     c.innerHTML = '<div class="page-head"><div><h1>Unduh PDF</h1><p>Laporan per kelompok, gabungan satu bulan, atau gabungan dengan notulen.</p></div></div>' +
       '<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
       '<section class="card pdf-card"><span class="ico-tile">' + icon('file') + '</span><div><b>Laporan per Kelompok</b><p class="muted" style="font-size:13px">Satu laporan lengkap dengan kop & logo.</p></div>' +
-      '<div class="fields"><select class="select" data-b1>' + App.bulanOptions(per.bulan) + '</select><select class="select" data-t1>' + App.tahunOptions(per.tahun) + '</select></div><select class="select" data-k1></select>' +
+      '<div class="fields"><select class="select" data-b1>' + App.bulanOptions(per.bulan) + '</select><select class="select" data-t1>' + App.tahunOptions(per.tahun) + '</select></div><select class="select" data-k1></select>' + kopPick('s1') +
       '<button class="btn btn-primary" data-go1>' + icon('download') + ' Unduh PDF</button></section>' +
       '<section class="card pdf-card"><span class="ico-tile">' + icon('printer') + '</span><div><b>Gabungan Satu Bulan</b><p class="muted" style="font-size:13px">Halaman ringkasan + laporan tiap kelompok (halaman baru per kelompok).</p></div>' +
-      '<div class="fields"><select class="select" data-b2>' + App.bulanOptions(per.bulan) + '</select><select class="select" data-t2>' + App.tahunOptions(per.tahun) + '</select></div>' +
+      '<div class="fields"><select class="select" data-b2>' + App.bulanOptions(per.bulan) + '</select><select class="select" data-t2>' + App.tahunOptions(per.tahun) + '</select></div>' + kopPick('s2') +
       '<button class="btn btn-primary" data-go2>' + icon('download') + ' Unduh Gabungan</button></section>' +
       '<section class="card pdf-card accent"><span class="ico-tile">' + icon('book') + '</span><div><b>Gabungan Laporan + Notulen</b><p class="muted" style="font-size:13px">Notulen di halaman awal, lalu rincian laporan per kelompok.</p></div>' +
       '<button class="btn btn-deep" data-go3>' + icon('download') + ' Unduh Laporan & Notulen</button></section></div>';
@@ -701,21 +617,33 @@
       const ls = B.laporanPeriode(q('[data-b1]').value, q('[data-t1]').value);
       q('[data-k1]').innerHTML = ls.length ? ls.map(l => '<option value="' + esc(l.ID) + '">' + esc(B.namaKelompok(l)) + '</option>').join('') : '<option value="">Belum ada laporan pada periode ini</option>';
     };
-    q('[data-b1]').onchange = fillK; q('[data-t1]').onchange = fillK; fillK();
+    const fillS = n => {
+      const sel = q('[data-' + n + ']');
+      const def = App.sesiUntukPeriode(q('[data-b' + n.slice(1) + ']').value, q('[data-t' + n.slice(1) + ']').value);
+      sel.innerHTML = '<option value="">— tanpa tanggal & tempat —</option>' + B.notulen().map(x => '<option value="' + esc(x.sesiId) + '"' + (def && def.sesiId === x.sesiId ? ' selected' : '') + '>' + esc(App.fmtTanggal(x.tanggal)) + ' — ' + esc(x.tempat) + '</option>').join('');
+    };
+    const infoDari = n => { const id = q('[data-' + n + ']').value; return App.kopInfo(B.notulen().find(x => x.sesiId === id)); };
+    q('[data-b1]').onchange = () => { fillK(); fillS('s1'); }; q('[data-t1]').onchange = () => { fillK(); fillS('s1'); }; fillK(); fillS('s1');
+    q('[data-b2]').onchange = () => fillS('s2'); q('[data-t2]').onchange = () => fillS('s2'); fillS('s2');
     q('[data-go1]').onclick = e => {
       const l = B.laporan().find(x => x.ID === q('[data-k1]').value);
       if (!l) { App.toast('Pilih laporan terlebih dahulu.', 'warn'); return; }
-      App.pdf.run(e.currentTarget, () => App.pdf.laporan(l));
+      App.pdf.run(e.currentTarget, () => App.pdf.laporan(l, infoDari('s1')));
     };
     q('[data-go2]').onclick = e => {
       const b = +q('[data-b2]').value, t = +q('[data-t2]').value;
       const ls = B.laporanPeriode(b, t);
       if (!ls.length) { App.toast('Belum ada laporan pada ' + App.periode(b, t) + '.', 'warn'); return; }
-      App.pdf.run(e.currentTarget, () => App.pdf.gabungan(b, t, ls, B.wajib(), null));
+      App.pdf.run(e.currentTarget, () => App.pdf.gabungan(b, t, ls, B.wajib(), null, infoDari('s2')));
     };
     q('[data-go3]').onclick = () => pdfGabunganNotulen();
     App.idle(() => App.lib('jspdf').catch(() => {}));
   }));
+
+  /** Pilihan sesi notulen untuk baris "Tanggal : … Tempat : …" di kop PDF */
+  function kopPick(n) {
+    return '<label class="field" style="margin:0"><span class="label" style="font-size:12.5px">' + icon('calendar', 'sm') + ' Kop: tanggal & tempat musyawaroh</span><select class="select" data-' + n + '></select></label>';
+  }
 
   async function pdfGabunganNotulen() {
     const ok = await App.confirm({ title: 'Unduh gabungan', message: 'Download semua laporan kelompok dan juga notulen bulan ini?', ok: 'Iya', cancel: 'Tidak' });
@@ -728,7 +656,7 @@
       title: 'Pilih isi PDF', wide: true,
       body: '<div class="fields"><div class="field"><label>Bulan laporan</label><select class="select" data-b>' + App.bulanOptions(per.bulan) + '</select></div><div class="field"><label>Tahun</label><select class="select" data-t>' + App.tahunOptions(per.tahun) + '</select></div></div>' +
         '<div class="row between" style="margin-top:18px"><span class="label" style="margin:0">Notulen yang disertakan</span><span><button class="btn btn-ghost btn-xs" data-all>Pilih Semua</button><button class="btn btn-ghost btn-xs" data-none>Kosongkan</button></span></div>' +
-        '<div style="max-height:280px;overflow:auto;margin-top:8px" data-ns>' + (all.length ? all.map(s => '<label class="sesi-item check" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (pre(s) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b> — ' + esc(s.tempat) + ' <span class="muted">(' + s.poin.length + ' poin)</span></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div>',
+        '<div style="max-height:280px;overflow:auto;margin-top:8px" data-ns>' + (all.length ? all.map(s => '<label class="sesi-item check" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (pre(s) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b> — ' + esc(s.tempat) + ' <span class="muted">(' + esc(App.notulenInfo(s)) + ')</span></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div>',
       foot: '<button class="btn btn-soft" data-x>Batal</button><button class="btn btn-primary" data-go>' + icon('download') + ' Unduh PDF</button>',
     });
     const cbs = () => Array.from(m.el.querySelectorAll('[data-ns] input'));

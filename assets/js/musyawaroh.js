@@ -29,7 +29,7 @@
       '<div class="notice info" style="margin-top:16px">' + icon('info') + '<div>Navigasi: tombol panah di layar, tombol ← → keyboard / klik presenter, atau geser di layar sentuh. Tekan <b>Esc</b> untuk keluar. Daftar hadir tidak ditampilkan.</div></div>' +
       '<button class="btn btn-deep btn-block" style="margin-top:18px;min-height:56px;font-size:16px" data-start>' + icon('maximize') + ' Mulai Mode Musyawaroh</button></section>' +
       '<section class="card"><div class="row between"><div class="card-title">' + icon('book') + ' Sesi Notulen</div><span><button class="btn btn-ghost btn-xs" data-all>Semua</button><button class="btn btn-ghost btn-xs" data-none>Kosongkan</button></span></div>' +
-      '<div style="margin-top:10px;max-height:420px;overflow:auto">' + (all.length ? all.map(s => '<label class="sesi-item check ' + (sel.has(s.sesiId) ? 'on' : '') + '" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (sel.has(s.sesiId) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b><div class="meta">' + esc(s.tempat) + ' · ' + s.poin.length + ' poin</div></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div></section></div>';
+      '<div style="margin-top:10px;max-height:420px;overflow:auto">' + (all.length ? all.map(s => '<label class="sesi-item check ' + (sel.has(s.sesiId) ? 'on' : '') + '" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (sel.has(s.sesiId) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b><div class="meta">' + esc(s.tempat) + ' · ' + esc(App.notulenInfo(s)) + '</div></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div></section></div>';
     c.querySelector('[data-acts]').appendChild(App.admin.periodPick(per, (b, t) => { App.setPeriode(b, t); c._sel = null; App.render(); }));
     const upd = () => { c.querySelector('[data-n]').textContent = sel.size; };
     c.querySelectorAll('.sesi-item input').forEach(cb => { cb.onchange = () => { if (cb.checked) sel.add(cb.value); else sel.delete(cb.value); cb.closest('.sesi-item').classList.toggle('on', cb.checked); upd(); }; });
@@ -51,7 +51,7 @@
       '<div class="p-top">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') +
       '<div class="hide-m" style="line-height:1.2"><b style="display:block">' + esc(meta.sub.split('·')[0].trim()) + '</b><small style="opacity:.8;letter-spacing:.06em">BAGIAN PENDIDIKAN</small></div>' +
       '<div class="ttl"><b>Musyawaroh Bagian Pendidikan · ' + esc(App.periode(per.bulan, per.tahun)) + '</b><small>● Sesi Musyawaroh Pleno</small></div>' +
-      '<span class="count" data-count></span><button class="btn" data-exit>' + icon('minimize') + ' Keluar (Esc)</button>' + App.logo.html('kanan').replace('logo-circle', 'logo-circle sm') + '</div>' +
+      '<span class="count" data-count></span><button class="btn" data-exit>' + icon('minimize') + ' Keluar (Esc)</button></div>' +
       '<div class="p-stage" data-stage><button class="nav-arrow l" data-prev aria-label="Sebelumnya">' + icon('chevL', 'lg') + '</button><button class="nav-arrow r" data-next aria-label="Berikutnya">' + icon('chevR', 'lg') + '</button></div>' +
       '<div class="p-tabs" data-tabs>' + slides.map((s, i) => '<button class="p-tab" data-i="' + i + '">' + (i + 1) + ' ' + esc(s.tab) + (s.t === 'kelompok' && !s.l ? ' <span class="badge warn">Belum</span>' : '') + '</button>').join('') +
       '<span class="muted hide-m" style="margin-left:auto;font-size:.75em;align-self:center;white-space:nowrap">← → atau geser untuk pindah</span></div></div>');
@@ -65,6 +65,7 @@
       stage.querySelectorAll('.slide').forEach(s => s.remove());
       const s = App.html('<div class="slide ' + (back ? 'back' : '') + '">' + slideHtml(slides[idx], per, list, wajib) + '</div>');
       stage.appendChild(s);
+      bindTanggapan(s, slides[idx], per, list, wajib);
       el.querySelector('[data-count]').textContent = (idx + 1) + ' / ' + slides.length;
       el.querySelector('[data-prev]').disabled = idx === 0;
       el.querySelector('[data-next]').disabled = idx === slides.length - 1;
@@ -86,6 +87,12 @@
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     };
     const onKey = e => {
+      const t = e.target;
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) {
+        // sedang mengetik tanggapan → tombol navigasi tidak dipakai
+        if (e.key === 'Escape') { e.preventDefault(); const b = t.closest('.tg-edit') && t.closest('.tg-edit').querySelector('[data-tgcancel]'); if (b) b.click(); else t.blur(); }
+        return;
+      }
       if (['ArrowRight', 'PageDown', ' ', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); next(); }
       else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); prev(); }
       else if (e.key === 'Home') { e.preventDefault(); show(0, true); }
@@ -101,6 +108,7 @@
     let sx = 0, sy = 0;
     stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
     stage.addEventListener('touchend', e => {
+      if (e.target.closest && e.target.closest('.tg-edit, textarea')) return;
       const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
       if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) { if (dx < 0) next(); else prev(); }
     }, { passive: true });
@@ -119,7 +127,7 @@
       const r = App.rekap(list);
       return '<span class="kicker">Ringkasan</span><h2 class="giant">Rekap ' + esc(periode) + '</h2><div class="underline"></div>' +
         '<div class="p-grid"><div><div class="total-band" style="margin-top:0"><div><div style="font-weight:800;letter-spacing:.08em;text-transform:uppercase">' + icon('award') + ' Total Generus</div><div style="opacity:.85;margin-top:.3em">dari ' + list.length + ' / ' + wajib.length + ' kelompok yang sudah lapor</div></div><div class="n">' + App.fmtNum(r.total) + '<small>Orang</small></div></div>' +
-        '<div class="sum-grid">' + [['Caberawit', r.caberawit], ['Praremaja', r.praremaja], ['Remaja', r.remaja], ['Pranikah', r.pranikah], ['Mondok', r.mondok], ['Mubaligh', r.mubaligh]]
+        '<div class="sum-grid s7">' + [['Caberawit', r.caberawit], ['Praremaja', r.praremaja], ['Remaja', r.remaja], ['Pranikah', r.pranikah], ['Muda-Mudi', r.mudamudi], ['Mondok', r.mondok], ['Mubaligh', r.mubaligh]]
           .map(x => '<div class="sum-stat"><div class="l">' + x[0] + '</div><div class="v">' + App.fmtNum(x[1]) + '</div></div>').join('') + '</div></div>' +
         '<div class="side-card"><h3>' + icon('listCheck') + ' Status Pelaporan</h3><div class="stat-list" style="grid-template-columns:1fr;margin-top:0">' +
         wajib.map(k => { const l = list.find(x => x.KelompokID === k.id); return '<div class="stat-item ' + (l ? '' : 'pending') + '"><b>' + esc(k.nama) + '</b>' + (l ? '<span class="badge ok">' + icon('checkCircle', 'sm') + ' Sudah</span>' : '<span class="badge warn">' + icon('clock', 'sm') + ' Belum</span>') + '</div>'; }).join('') +
@@ -134,36 +142,111 @@
         '<h2 class="giant" style="margin-top:.4em">' + esc(s.k.nama) + '</h2><p style="font-size:1.4em;margin-top:.4em" class="muted">Belum mengirim laporan ' + esc(periode) + '</p><span class="badge warn" style="margin-top:1em;font-size:1em">Menunggu pengiriman</span></div></div>';
     }
     const l = s.l, r = App.rekap([l]);
-    const pct = v => (v !== '' && v !== undefined && v !== null ? v + '%' : '—');
+    const tg = B.tanggapan(l.ID);
+    const ada = v => v !== '' && v !== undefined && v !== null;
+    const pct = v => (ada(v) ? App.fmtNum(v) + '%' : '—');
     const jen = [
       ['Caberawit', l.Jml_Caberawit, (l.Cbr_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Cbr_Hadir) + ' · materi ' + pct(l.Cbr_Materi)],
       ['Praremaja', l.Jml_Praremaja, (l.Prm_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Prm_Hadir) + ' · materi ' + pct(l.Prm_Materi)],
       ['Remaja', l.Jml_Remaja, (l.Rmj_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Rmj_Hadir) + ' · materi ' + pct(l.Rmj_Materi)],
-      ['Pranikah', l.Jml_Pranikah, 'Sambung: ' + pct(l.Pnk_Hadir1) + (l.Pnk_Hadir2 !== '' && l.Pnk_Hadir2 !== undefined ? ' · ' + pct(l.Pnk_Hadir2) : '')],
+      ['Pranikah', l.Jml_Pranikah, 'Sambung 1: ' + pct(l.Pnk_Hadir1) + (ada(l.Pnk_Hadir2) ? ' · Sambung 2: ' + pct(l.Pnk_Hadir2) : '')],
     ];
     const linkOk = ['Cbr_Link', 'Prm_Link', 'Rmj_Link', 'Pnk_Link', 'MM_Link'].filter(k => l[k] === 'Sudah').length;
-    const kbm = [
-      ['calendar', 'Sudah Muslimus?', l.Muslimus === 'Ya' ? 'Ya' + (l.Muslimus_Tanggal ? ' · ' + App.fmtTanggal(l.Muslimus_Tanggal, true) : '') : (l.Muslimus || '—')],
-      ['fileCheck', 'Laporan PJP di Link', l.PJP_Link ? (/Sudah/.test(l.PJP_Link) ? 'Sudah lengkap' : 'Belum') : '—'],
-      ['listCheck', 'Laporan kelas di link', linkOk + ' / 5 jenjang'],
-      ['users', 'Muda-Mudi', App.num(l.Jml_MudaMudi) + ' Orang · hadir ' + pct(l.MM_Hadir)],
-      ['book', 'Kelas Tahfidz', l.Tahfidz_Ada === 'Ada' ? 'Ada · ' + App.num(l.Tahfidz_Jml) + ' Orang · ' + pct(l.Tahfidz_Hadir) : (l.Tahfidz_Ada || '—')],
-      ['building', 'Generus Sedang Mondok', App.num(l.Generus_Sedang_Mondok) + ' Orang'],
-      ['mic', 'Sudah Mubaligh/Mubalighot', App.num(l.Generus_Sudah_Mondok) + ' Orang'],
+    const yaTidak = v => (v === 'Sudah' ? '<span class="badge ok">' + icon('checkCircle', 'sm') + ' Sudah</span>' : (v ? '<span class="badge warn">' + icon('clock', 'sm') + ' Belum</span>' : '—'));
+    const lain = [
+      ['fileCheck', 'Laporan PJP di Link', yaTidak(/^sudah/i.test(l.PJP_Link || '') ? 'Sudah' : l.PJP_Link)],
+      ['listCheck', 'Laporan kelas di link', '<b>' + linkOk + ' / 5</b> jenjang'],
+      ['building', 'Generus Sedang Mondok', '<b>' + App.fmtNum(App.num(l.Generus_Sedang_Mondok)) + '</b> Orang'],
+      ['mic', 'Sudah Mubaligh/Mubalighot', '<b>' + App.fmtNum(App.num(l.Generus_Sudah_Mondok)) + '</b> Orang'],
     ];
-    const bersih = v => (v && !/^[-.\s]*$/.test(String(v)) && !/^tidak ada\s*$/i.test(String(v)) ? String(v) : '');
-    const catatan = [
-      ['Kendala Caberawit', l.Cbr_Kendala], ['Kendala Praremaja', l.Prm_Kendala], ['Kendala Remaja', l.Rmj_Kendala], ['Kendala Pranikah', l.Pnk_Kendala], ['Kendala Muda-Mudi', l.MM_Kendala],
-      ['Caberawit', l.Cbr_Lainnya], ['Praremaja', l.Prm_Lainnya], ['Remaja', l.Rmj_Lainnya], ['Pranikah', l.Pnk_Lainnya], ['Muda-Mudi', l.MM_LapLainnya],
-      ['Usulan / Info', l.Catatan_Lainnya],
-    ].map(x => [x[0], bersih(x[1])]).filter(x => x[1]);
-    return '<div class="row between" style="flex-wrap:wrap;align-items:flex-start"><div><span class="kicker">Laporan Kelompok</span> <span class="muted" style="margin-left:.6em">' + icon('calendar', 'sm') + ' Bulan Kegiatan Penuh: <b style="color:var(--text)">' + esc(periode) + '</b></span>' +
-      '<h2 class="giant">KELOMPOK ' + esc(String(s.k.nama).toUpperCase()) + '</h2><div class="underline"></div></div>' +
-      '<div class="side-card row" style="gap:.8em;padding:.9em 1.2em"><span class="ico-tile">' + icon('shield') + '</span><div><div class="section-label">Status Pelaporan</div><b style="color:var(--link)">Dikirim ' + esc(App.fmtWaktu(l.WaktuKirim, { noYear: true })) + (l.WaktuUbah ? ' · dikoreksi' : '') + '</b></div></div></div>' +
-      '<div class="p-grid"><div><div class="jen-grid">' + jen.map(j => '<div class="jen"><div class="h">' + j[0] + '</div><div class="n">' + App.fmtNum(j[1]) + '<small>Orang</small></div><div class="note">' + esc(j[2]) + '</div></div>').join('') + '</div>' +
+    const bar = v => '<div class="pbar"><i style="width:' + Math.max(0, Math.min(100, App.num(v))) + '%"></i></div>';
+    const mus = l.Muslimus === 'Ya'
+      ? '<div class="mus-big ok"><span class="ic">' + icon('checkCircle') + '</span><div><small>Sudah Muslimus?</small><b>SUDAH</b>' + (l.Muslimus_Tanggal ? '<span>' + esc(App.fmtTanggal(l.Muslimus_Tanggal)) + '</span>' : '') + '</div></div>'
+      : '<div class="mus-big no"><span class="ic">' + icon('alert') + '</span><div><small>Sudah Muslimus?</small><b>' + (l.Muslimus ? 'BELUM' : '—') + '</b>' + (l.Muslimus_Ket ? '<span>' + esc(l.Muslimus_Ket) + '</span>' : '') + '</div></div>';
+    const minggu = [1, 2, 3, 4].map(i => '<li><span>Minggu ' + i + '</span><b>' + (l['MM_Minggu' + i] ? esc(l['MM_Minggu' + i]) : '<i class="muted">—</i>') + '</b></li>').join('');
+    const mmCard = '<div class="side-card prog"><h3>' + icon('sparkle') + ' Muda-Mudi</h3>' +
+      '<div class="prog-top"><div class="big">' + App.fmtNum(App.num(l.Jml_MudaMudi)) + '<small>Orang</small></div><div class="pct"><span>Kehadiran</span><b>' + pct(l.MM_Hadir) + '</b>' + bar(l.MM_Hadir) + '</div></div>' +
+      '<ul class="minggu">' + minggu + (l.MM_Lainnya ? '<li><span>Lainnya</span><b>' + esc(l.MM_Lainnya) + '</b></li>' : '') + '</ul></div>';
+    const thfCard = l.Tahfidz_Ada === 'Ada'
+      ? '<div class="side-card prog"><h3>' + icon('book') + ' Kelas Tahfidz</h3>' +
+        '<div class="prog-top"><div class="big">' + App.fmtNum(App.num(l.Tahfidz_Jml)) + '<small>Peserta</small></div><div class="pct"><span>Kehadiran</span><b>' + pct(l.Tahfidz_Hadir) + '</b>' + bar(l.Tahfidz_Hadir) + '</div></div>' +
+        '<div class="kbm-row" style="margin-top:.8em"><span>' + icon('calendar', 'sm') + ' Jadwal Kegiatan</span><b>' + (l.Tahfidz_Jadwal ? esc(l.Tahfidz_Jadwal) : '—') + '</b></div></div>'
+      : '<div class="side-card prog none"><h3>' + icon('book') + ' Kelas Tahfidz</h3><div class="none-msg">' + icon('info') + '<div><b>Belum ada Kelas Tahfidz</b>' + (l.Tahfidz_Ket ? '<p>' + esc(l.Tahfidz_Ket) + '</p>' : '') + '</div></div></div>';
+    const kolom = [
+      ['Laporan Lainnya', 'file', 'Tidak ada laporan lainnya', [['Cbr_Lainnya', 'Caberawit'], ['Prm_Lainnya', 'Praremaja'], ['Rmj_Lainnya', 'Remaja'], ['Pnk_Lainnya', 'Pranikah'], ['MM_LapLainnya', 'Muda-Mudi']]],
+      ['Kendala', 'alertCircle', 'Tidak ada kendala', [['Cbr_Kendala', 'Caberawit'], ['Prm_Kendala', 'Praremaja'], ['Rmj_Kendala', 'Remaja'], ['Pnk_Kendala', 'Pranikah'], ['MM_Kendala', 'Muda-Mudi']]],
+      ['Usulan / Info', 'message', 'Tidak ada usulan / info', [['Catatan_Lainnya', '']]],
+    ];
+    const isiAda = v => v && !/^[-.\s]*$/.test(String(v)) && !/^(tidak ada|nihil|tidak|belum ada)\.?\s*$/i.test(String(v).trim());
+    const kolHtml = kolom.map((k, ki) => {
+      const its = k[3].filter(x => isiAda(l[x[0]]));
+      return '<div class="side-card tg-col c' + ki + '"><h3>' + icon(k[1]) + ' ' + k[0] + ' <span class="cnt">' + its.length + '</span></h3>' +
+        (its.length ? its.map(x => tgItem(x[0], x[1], l[x[0]], tg[x[0]])).join('') : '<div class="tg-empty">' + esc(k[2]) + '</div>') + '</div>';
+    }).join('');
+    const umum = tg._umum;
+    return '<div class="kel-head"><div><span class="kicker">Laporan Kelompok</span> <span class="muted" style="margin-left:.6em">' + icon('calendar', 'sm') + ' Bulan Kegiatan Penuh: <b style="color:var(--text)">' + esc(periode) + '</b></span>' +
+      '<h2 class="giant">KELOMPOK ' + esc(String(s.k.nama).toUpperCase()) + '</h2><div class="underline"></div>' +
+      '<div class="muted" style="margin-top:.7em">' + icon('shield', 'sm') + ' Dikirim ' + esc(App.fmtWaktu(l.WaktuKirim, { noYear: true })) + (l.WaktuUbah ? ' · dikoreksi' : '') + '</div></div>' + mus + '</div>' +
+      '<div class="p-grid"><div><div class="jen-grid">' + jen.map(j => '<div class="jen"><div class="h">' + j[0] + '</div><div class="n">' + App.fmtNum(App.num(j[1])) + '<small>Orang</small></div><div class="note">' + esc(j[2]) + '</div></div>').join('') + '</div>' +
       '<div class="total-band"><div><div style="font-weight:800;letter-spacing:.08em;text-transform:uppercase">' + icon('award') + ' Total Generus Kelompok</div><div style="opacity:.85;margin-top:.3em">Caberawit + Praremaja + Remaja + Pranikah</div></div><div class="n">' + App.fmtNum(r.total) + '<small>Orang</small></div></div></div>' +
-      '<div><div class="side-card"><h3>' + icon('listCheck') + ' Rincian Program KBM</h3>' + kbm.map(x => '<div class="kbm-row"><span>' + icon(x[0], 'sm') + ' ' + esc(x[1]) + '</span><b>' + esc(x[2]) + '</b></div>').join('') + '</div>' +
-      (catatan.length ? '<div class="side-card catatan"><h3>' + icon('message') + ' Catatan & Kendala</h3><ul>' + catatan.map(x => '<li><b>' + esc(x[0]) + ':</b> <span style="white-space:pre-line">' + esc(x[1]) + '</span></li>').join('') + '</ul></div>' : '') +
-      '</div></div>';
+      '<div class="side-card"><h3>' + icon('listCheck') + ' Lainnya</h3>' + lain.map(x => '<div class="kbm-row"><span>' + icon(x[0], 'sm') + ' ' + esc(x[1]) + '</span><span>' + x[2] + '</span></div>').join('') + '</div></div>' +
+      '<div class="p-two">' + mmCard + thfCard + '</div>' +
+      '<div class="p-three">' + kolHtml + '</div>' +
+      '<div class="side-card tg-umum" data-bidang="_umum"><h3>' + icon('edit') + ' Catatan Musyawaroh untuk ' + esc(s.k.nama) + '</h3>' + tgBox('_umum', umum, 'Tambah catatan / keputusan') + '</div>';
+  }
+
+  /** Satu butir (kendala / lainnya / usulan) + tanggapannya */
+  function tgItem(bidang, label, isi, t) {
+    return '<div class="tg-item" data-bidang="' + bidang + '">' + (label ? '<div class="tg-lbl">' + esc(label) + '</div>' : '') +
+      '<div class="tg-text">' + esc(isi) + '</div>' + tgBox(bidang, t, 'Tanggapi') + '</div>';
+  }
+  function tgBox(bidang, t, tombol) {
+    return t && t.isi
+      ? '<div class="tg-resp"><div class="h">' + icon('reply', 'sm') + ' Tanggapan Musyawaroh <button class="tg-edit-btn" data-tg="' + bidang + '" title="Ubah tanggapan">' + icon('edit', 'sm') + '</button></div><div class="b">' + esc(t.isi) + '</div></div>'
+      : '<button class="tg-btn" data-tg="' + bidang + '">' + icon('reply', 'sm') + ' ' + esc(tombol) + '</button>';
+  }
+
+  /** Klik "Tanggapi" → kotak isian di tempat; simpan optimistis (langsung tampil, sinkron di latar) */
+  function bindTanggapan(slide, s, per, list, wajib) {
+    if (s.t !== 'kelompok' || !s.l) return;
+    const l = s.l;
+    slide.querySelectorAll('[data-tg]').forEach(btn => {
+      btn.onclick = () => {
+        const bidang = btn.getAttribute('data-tg');
+        const host = btn.closest('[data-bidang]');
+        const lama = B.tanggapan(l.ID)[bidang];
+        const tempat = btn.closest('.tg-resp') || btn;
+        const ed = App.html('<div class="tg-edit"><textarea rows="3" placeholder="Tulis tanggapan, solusi, atau keputusan musyawaroh…">' + esc(lama ? lama.isi : '') + '</textarea>' +
+          '<div class="row" style="gap:.5em;justify-content:flex-end;margin-top:.5em">' + (lama ? '<button class="btn btn-ghost btn-sm" data-tgdel style="margin-right:auto;color:var(--err)">' + icon('trash', 'sm') + ' Hapus</button>' : '') +
+          '<button class="btn btn-soft btn-sm" data-tgcancel>Batal</button><button class="btn btn-primary btn-sm" data-tgsave>' + icon('save', 'sm') + ' Simpan</button></div></div>');
+        tempat.replaceWith(ed);
+        const ta = ed.querySelector('textarea');
+        ta.focus();
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+        const redraw = () => {
+          const top = slide.scrollTop;
+          slide.innerHTML = slideHtml(s, per, list, wajib);
+          slide.scrollTop = top;
+          bindTanggapan(slide, s, per, list, wajib);
+          const again = slide.querySelector('[data-bidang="' + bidang + '"]');
+          if (again) { again.classList.add('flash'); setTimeout(() => again.classList.remove('flash'), 900); }
+        };
+        const simpan = isi => {
+          isi = isi.trim();
+          const id = (lama && lama.id) || App.uuid();
+          App.store.mutate('simpanTanggapan', { id: id, laporanId: l.ID, bidang: bidang, isi: isi }, d => {
+            d.tanggapan = (d.tanggapan || []).filter(x => !(x.laporanId === l.ID && x.bidang === bidang));
+            if (isi) d.tanggapan.push({ id: id, laporanId: l.ID, kelompokId: l.KelompokID, bulan: +l.Bulan, tahun: +l.Tahun, bidang: bidang, isi: isi, waktu: new Date().toISOString(), oleh: (App.auth.get() || {}).username || '' });
+          }, { label: isi ? 'Simpan tanggapan' : 'Hapus tanggapan' });
+          redraw();
+        };
+        ed.querySelector('[data-tgcancel]').onclick = redraw;
+        ed.querySelector('[data-tgsave]').onclick = () => { if (!ta.value.trim() && !lama) { redraw(); return; } simpan(ta.value); };
+        const del = ed.querySelector('[data-tgdel]');
+        if (del) del.onclick = () => simpan('');
+        ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ed.querySelector('[data-tgsave]').click(); } });
+        if (host) host.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      };
+    });
   }
 })();

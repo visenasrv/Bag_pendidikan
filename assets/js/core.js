@@ -169,6 +169,10 @@
     heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
     building: '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>',
     mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/>',
+    sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    filter: '<path d="M22 3H2l8 9.46V19l4 2v-8.54z"/>',
+    reply: '<path d="M9 17l-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4M12 14h.01"/>',
     printer: '<path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>',
   };
@@ -311,7 +315,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.2.0';
+  App.SERVER_MIN = '1.3.0';
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);
@@ -535,30 +539,26 @@
 
   // ───────────────────────── Tema ─────────────────────────
   App.theme = {
-    mode() { try { return localStorage.getItem('mp_theme') || 'system'; } catch (e) { return 'system'; } },
+    mode() { try { return localStorage.getItem('mp_theme') === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } },
     set(m) {
       try { localStorage.setItem('mp_theme', m); } catch (e) { /* abaikan */ }
       this.apply();
     },
     apply() {
-      const m = this.mode();
-      const dark = m === 'dark' || (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const dark = this.mode() === 'dark';
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       const meta = document.querySelector('meta[name=theme-color]');
       if (meta) meta.content = dark ? '#06382B' : '#064E3B';
       document.dispatchEvent(new CustomEvent('themechange'));
     },
+    /** Terang ⇄ Gelap (v1.3: tanpa "ikuti perangkat") */
     cycle() {
-      const order = ['system', 'light', 'dark'];
-      const next = order[(order.indexOf(this.mode()) + 1) % 3];
+      const next = this.mode() === 'dark' ? 'light' : 'dark';
       this.set(next);
-      App.toast('Tema: ' + ({ system: 'Ikuti perangkat', light: 'Terang', dark: 'Gelap' })[next], 'info', { ms: 1400 });
+      App.toast('Tema: ' + (next === 'dark' ? 'Gelap' : 'Terang'), 'info', { ms: 1200 });
     },
     isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; },
   };
-  try {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (App.theme.mode() === 'system') App.theme.apply(); });
-  } catch (e) { /* browser lama */ }
 
   // ───────────────────────── Logo (cache lokal + sinkron) ─────────────────────────
   App.logo = {
@@ -578,7 +578,7 @@
     /** Sinkronkan bila ID logo di server berbeda dengan cache */
     async sync(ids) {
       if (!ids) return;
-      const need = ['kiri', 'kanan'].some(s => {
+      const need = ['kiri'].some(s => {
         const want = ids[s] || '';
         const have = (App.ls.get('mp_logo_' + s) || {}).id || '';
         return want !== have;
@@ -598,8 +598,9 @@
   // ───────────────────────── Rekap generus ─────────────────────────
   App.totalGenerus = l => App.num(l.Jml_Caberawit) + App.num(l.Jml_Praremaja) + App.num(l.Jml_Remaja) + App.num(l.Jml_Pranikah);
   App.rekap = function (list) {
-    const r = { caberawit: 0, praremaja: 0, remaja: 0, pranikah: 0, total: 0, mondok: 0, mubaligh: 0 };
+    const r = { caberawit: 0, praremaja: 0, remaja: 0, pranikah: 0, total: 0, mondok: 0, mubaligh: 0, mudamudi: 0 };
     list.forEach(l => {
+      r.mudamudi += App.num(l.Jml_MudaMudi);
       r.caberawit += App.num(l.Jml_Caberawit);
       r.praremaja += App.num(l.Jml_Praremaja);
       r.remaja += App.num(l.Jml_Remaja);
@@ -774,6 +775,12 @@
     laporanPeriode(b, t) { return this.laporan().filter(l => +l.Bulan === +b && +l.Tahun === +t); },
     kunci(b, t) { return ((Store.data && Store.data.kunci) || []).find(k => +k.bulan === +b && +k.tahun === +t) || { terkunci: false, tutupBaru: false }; },
     notulen() { return (Store.data && Store.data.notulen) || []; },
+    /** Tanggapan musyawaroh untuk satu laporan → {bidang: {isi, waktu, oleh}} */
+    tanggapan(lapId) {
+      const out = {};
+      ((Store.data && Store.data.tanggapan) || []).forEach(t => { if (t.laporanId === lapId) out[t.bidang] = t; });
+      return out;
+    },
     peserta() { return (Store.data && Store.data.peserta) || []; },
     dapuan(kid) { return ((Store.data && Store.data.dapuan) || []).filter(d => d.kelompokId === kid).sort((a, b) => a.urutan - b.urutan); },
     set() { return (Store.data && Store.data.pengaturan) || {}; },

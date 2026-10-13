@@ -56,7 +56,7 @@
     const root = App.mount(
       '<div class="pub">' +
       '<section class="hero"><div class="pattern"></div><div class="bar">' + App.logo.html('kiri') +
-      '<div class="right">' + App.logo.html('kanan') + '<button class="icon-btn light" data-theme aria-label="Ganti tema">' + icon('moon') + '</button></div></div>' +
+      '<div class="right"><button class="icon-btn light" data-theme aria-label="Ganti tema">' + icon('moon') + '</button></div></div>' +
       '<h1 data-nama>' + esc(cfg0.namaAplikasi || 'Musyawaroh & Pelaporan Bagian Pendidikan') + '</h1><p data-sub>' + esc(cfg0.subjudul || 'PPG Kutai Timur · Desa Sangatta Selatan') + '</p></section>' +
       '<div class="card home-period"><div class="when"><span class="ico-tile sm">' + icon('calendar') + '</span><div><small>Laporan bulan:</small><b>' + App.periode(per.bulan, per.tahun) + '</b></div></div><span data-count></span></div>' +
       '<div class="tiles">' +
@@ -299,23 +299,24 @@
   App.route('/dashboard', function (p, vid) {
     if (!App.api.configured()) return setupScreen();
     let per = Object.assign({}, App.bulanLalu());
-    const root = App.mount('<div class="pub">' + topbar('Dashboard Ringkasan', 'Status laporan & rekap generus') +
-      '<div class="card" style="margin-top:4px"><div class="fields"><div class="field"><label>Bulan</label><select class="select" data-b>' + App.bulanOptions(per.bulan) + '</select></div>' +
-      '<div class="field"><label>Tahun</label><select class="select" data-t>' + App.tahunOptions(per.tahun) + '</select></div></div></div>' +
-      '<div data-body class="stack" style="margin-top:16px"><div class="skeleton" style="height:180px"></div><div class="skeleton" style="height:240px"></div></div></div>');
+    let kel = App.ls.get('mp_dash_kel_pub') || '';
+    const root = App.mount('<div class="pub pub-wide">' + topbar('Dashboard Ringkasan', 'Status laporan & rekap generus') +
+      '<div class="card" style="margin-top:4px"><div class="dash-filter"><div class="field"><label>Bulan</label><select class="select" data-b>' + App.bulanOptions(per.bulan) + '</select></div>' +
+      '<div class="field"><label>Tahun</label><select class="select" data-t>' + App.tahunOptions(per.tahun) + '</select></div>' +
+      '<div class="field"><label>' + icon('filter', 'sm') + ' Kelompok</label><span data-kelwrap><select class="select" disabled><option>Semua kelompok</option></select></span></div></div></div>' +
+      '<div data-body style="margin-top:16px"><div class="skeleton" style="height:180px"></div><div class="skeleton" style="height:240px;margin-top:16px"></div></div>' +
+      '<p class="muted" style="font-size:12.5px;text-align:center;margin-top:16px">' + icon('info', 'sm') + ' Angka bulan berjalan masih bisa bertambah sampai semua kelompok melapor.</p></div>');
     bindTop(root);
     const body = root.querySelector('[data-body]');
+    App.onLeave(() => App.dashDestroy(body));
     const paint = d => {
       if (!App.alive(vid) || +d.tahun !== per.tahun) return;
-      const b = d.bulan[per.bulan - 1];
-      const r = b.rekap;
-      body.innerHTML = heroTotal(b, { tag: App.periode(per.bulan, per.tahun) }) +
-        '<div class="stats">' +
-        [['Caberawit', r.caberawit, 'smile'], ['Praremaja', r.praremaja, 'cap'], ['Remaja', r.remaja, 'users'], ['Pranikah', r.pranikah, 'heart'], ['Generus Mondok', r.mondok, 'building'], ['Sudah Mubaligh', r.mubaligh, 'mic']]
-          .map(x => '<div class="stat"><div class="lbl">' + x[0] + icon(x[2], 'sm') + '</div><div class="val">' + App.fmtNum(x[1]) + '<small>orang</small></div></div>').join('') + '</div>' +
-        '<section class="card"><div class="card-head"><div class="card-title" style="font-size:15px">Status Laporan ' + App.periode(per.bulan, per.tahun) + '</div>' +
-        (b.terkunci ? '<span class="badge">' + icon('lock', 'sm') + ' Terkunci</span>' : '<span class="badge ok">' + icon('unlock', 'sm') + ' Terbuka</span>') + '</div>' + statusRows(b.status) + '</section>' +
-        '<p class="muted" style="font-size:12.5px;text-align:center">' + icon('info', 'sm') + ' Angka bulan berjalan masih bisa bertambah sampai semua kelompok melapor.</p>';
+      const m = App.dashModel.publik(d, per.bulan);
+      if (kel && !App.dashKelompok(m).some(k => k.id === kel)) kel = '';
+      const w = root.querySelector('[data-kelwrap]');
+      w.innerHTML = App.kelompokSelect(m, kel);
+      w.querySelector('[data-kel]').onchange = e => { kel = e.target.value; App.ls.set('mp_dash_kel_pub', kel); paint(d); };
+      App.dashRender(body, m, { kelompok: kel });
     };
     const load = () => {
       App.data.dash(per.tahun, paint).catch(e => {
@@ -325,8 +326,9 @@
       });
     };
     root.querySelector('[data-b]').onchange = e => { per.bulan = +e.target.value; const c = App.swrPeek('dash_' + per.tahun); if (c) paint(c); else load(); };
-    root.querySelector('[data-t]').onchange = e => { per.tahun = +e.target.value; const c = App.swrPeek('dash_' + per.tahun); if (c) paint(c); else body.innerHTML = '<div class="skeleton" style="height:180px"></div>'; load(); };
+    root.querySelector('[data-t]').onchange = e => { per.tahun = +e.target.value; const c = App.swrPeek('dash_' + per.tahun); if (c) paint(c); else { App.dashDestroy(body); body.innerHTML = '<div class="skeleton" style="height:180px"></div>'; } load(); };
     load();
+    App.idle(() => App.lib('chart').catch(() => {}));
   });
 
   // ───────────────────────── NOTULEN (publik, hanya baca) ─────────────────────────

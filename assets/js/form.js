@@ -55,7 +55,7 @@
             ok: 'Lanjutkan Draf', cancel: 'Mulai Baru',
           });
           if (!App.alive(this.o.viewId)) return;
-          if (lanjut) { this.data = Object.assign(defaults(), d.data); this.step = Math.min(d.step || 0, this.total - 1); }
+          if (lanjut) { this.data = Object.assign(defaults(), d.data); if (this.data.PJP_Link) this.data.PJP_Link = /^sudah/i.test(this.data.PJP_Link) ? 'Sudah' : 'Belum'; this.step = Math.min(d.step || 0, this.total - 1); }
           else this.clearDraft();
         }
       }

@@ -21,13 +21,8 @@
         { type: 'cek' },
         { k: 'Muslimus', label: 'Sudah Muslimus?', type: 'seg', options: ['Ya', 'Belum'], req: true },
         { k: 'Muslimus_Tanggal', label: 'Tanggal Muslimus', type: 'date', req: true, show: ya, panel: 'mus' },
-        { k: 'Muslimus_Ket', label: 'Keterangan Muslimus', type: 'textarea', show: d => !!d.Muslimus, panel: 'mus', ph: 'Contoh: Diadakan di Masjid Arrosyid, dihadiri 18 pengurus (atau rencana jadwal bila belum)' },
-        {
-          k: 'PJP_Link', label: 'Laporan PJP di Link', type: 'radio', req: true, options: [
-            { v: 'Sudah Diisi Lengkap', sub: 'Melalui tautan resmi pelaporan PJP Desa' },
-            { v: 'Belum / Kendala Teknis', sub: 'Akan disusulkan sebelum sidang musyawaroh' },
-          ],
-        },
+        { k: 'Muslimus_Ket', label: 'Keterangan Muslimus', type: 'textarea', show: d => d.Muslimus === 'Belum', panel: 'mus', ph: 'Contoh: Rencana muslimus tanggal 20, menunggu jadwal pengurus' },
+        { k: 'PJP_Link', label: 'Laporan PJP di Link', type: 'seg', options: ['Sudah', 'Belum'], req: true },
       ],
     },
     jenjang('caberawit', 'b', 'Caberawit', 'Cbr', 'usia PAUD – SD', 'Jml_Caberawit'),
@@ -38,7 +33,7 @@
       sub: 'Data jenjang Pranikah (mandiri & usia nikah) bulan ini',
       fields: [
         { k: 'Jml_Pranikah', label: 'Jumlah Pranikah', type: 'num', suffix: 'Orang', req: true, big: true },
-        { k: 'Pnk_Sambung1', label: 'Keterangan Sambung 1', type: 'textarea', rows: 2, ph: 'Contoh: Ikut sambung kelompok & pengajian muda-mudi' },
+        { k: 'Pnk_Sambung1', label: 'Keterangan Sambung 1', type: 'textarea', rows: 2, req: true, ph: 'Contoh: Ikut sambung kelompok & pengajian muda-mudi' },
         { k: 'Pnk_Hadir1', label: 'Prosentase Sambung 1', type: 'num', suffix: '%', req: true, max: 100 },
         { k: 'Pnk_Sambung2', label: 'Keterangan Sambung 2', type: 'textarea', rows: 2, ph: 'Opsional' },
         { k: 'Pnk_Hadir2', label: 'Prosentase Sambung 2', type: 'num', suffix: '%', max: 100, help: 'Opsional' },
@@ -52,10 +47,10 @@
       sub: 'Kegiatan muda-mudi per minggu bulan ini',
       fields: [
         { k: 'Jml_MudaMudi', label: 'Jumlah Muda-Mudi', type: 'num', suffix: 'Orang', req: true, big: true },
-        { k: 'MM_Minggu1', label: 'Minggu 1', type: 'text', ph: 'Kegiatan minggu pertama' },
-        { k: 'MM_Minggu2', label: 'Minggu 2', type: 'text', ph: 'Kegiatan minggu kedua' },
-        { k: 'MM_Minggu3', label: 'Minggu 3', type: 'text', ph: 'Kegiatan minggu ketiga' },
-        { k: 'MM_Minggu4', label: 'Minggu 4', type: 'text', ph: 'Kegiatan minggu keempat' },
+        { k: 'MM_Minggu1', label: 'Minggu 1', type: 'text', req: true, ph: 'Kegiatan minggu pertama (tulis "Tidak ada" bila kosong)' },
+        { k: 'MM_Minggu2', label: 'Minggu 2', type: 'text', req: true, ph: 'Kegiatan minggu kedua (tulis "Tidak ada" bila kosong)' },
+        { k: 'MM_Minggu3', label: 'Minggu 3', type: 'text', req: true, ph: 'Kegiatan minggu ketiga (tulis "Tidak ada" bila kosong)' },
+        { k: 'MM_Minggu4', label: 'Minggu 4', type: 'text', req: true, ph: 'Kegiatan minggu keempat (tulis "Tidak ada" bila kosong)' },
         { k: 'MM_Lainnya', label: 'Lainnya', type: 'text', ph: 'Opsional' },
         { k: 'MM_Hadir', label: 'Prosentase Kehadiran', type: 'num', suffix: '%', req: true, max: 100 },
         { k: 'MM_Link', label: 'Laporan Kelas Muda-Mudi di Link', type: 'seg', options: ['Sudah', 'Belum'], req: true },
@@ -143,5 +138,25 @@
       }
     });
     return err;
+  };
+})();
+
+/* Label butir tanggapan musyawaroh (v1.3): 'Cbr_Kendala' → 'Caberawit · Kendala' */
+(function () {
+  'use strict';
+  const App = window.App;
+  App.tanggapanLabel = function (bidang) {
+    if (bidang === '_umum') return 'Catatan Musyawaroh';
+    for (const s of App.FORM) {
+      const f = s.fields.find(x => x.k === bidang);
+      if (f) return f.k === 'Catatan_Lainnya' ? 'Usulan / Info' : s.judul + ' · ' + f.label;
+    }
+    return bidang;
+  };
+  /** Daftar tanggapan satu laporan, urut sesuai formulir (catatan umum di akhir) */
+  App.tanggapanList = function (lapId) {
+    const map = App.B ? App.B.tanggapan(lapId) : {};
+    const urut = App.FORM_KEYS.concat(['_umum']);
+    return Object.keys(map).map(k => map[k]).filter(t => t.isi).sort((a, b) => urut.indexOf(a.bidang) - urut.indexOf(b.bidang));
   };
 })();

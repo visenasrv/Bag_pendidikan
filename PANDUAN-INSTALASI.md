@@ -13,27 +13,49 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ---
 
-## U. UPDATE KE v1.2.0 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.3.0 (untuk aplikasi yang sudah berjalan)
 
-Versi ini hanya mempercepat & mengamankan aplikasi. **Isi spreadsheet, susunan kolom, dan tampilan tidak berubah.**
+**Yang baru di v1.3.0**
+1. Keterangan Muslimus hanya muncul bila jawabannya **Belum**.
+2. Laporan PJP di Link: pilihannya cukup **Sudah / Belum**. Data lama terbaca otomatis.
+3. **Keterangan Sambung 1** dan **Muda-Mudi Minggu 1–4** wajib diisi.
+4. Kelola Laporan: filter otomatis ke **bulan laporan berjalan** setiap kali dibuka.
+5. **Mode Musyawaroh** baru:
+   - kolom Laporan Lainnya, Kendala, dan Usulan/Info dipisah;
+   - tombol **Tanggapi** di setiap butir, plus **Catatan Musyawaroh** per kelompok;
+   - kartu **"Lainnya"** (dulu "Rincian Program KBM");
+   - kartu **Muda-Mudi** dan **Kelas Tahfidz** sendiri;
+   - kartu **Sudah Muslimus?** yang besar.
 
-### U1. Backend (±5 menit)
+   Tanggapan ikut tampil di rincian laporan dan di PDF.
+6. Logo cukup **satu**.
+7. Editor notulen bergaya **Google Dokumen**: toolbar lengkap, penggaris, dan halaman putih. Tempat & tanggal tetap ada.
+8. Kop PDF memuat **Tanggal : … Tempat : …** dari notulen musyawaroh.
+9. Urutan kelompok & pengurus bisa diatur dengan **seret (drag & drop)** di Pengaturan.
+10. Dashboard umum tampil **sama seperti dashboard admin** (tanpa tombol kunci): ada jumlah **Muda-Mudi** dan **filter kelompok**.
+11. Tema cukup **Terang / Gelap**.
+
+**Yang terjadi pada data**
+- Tab **Laporan** tetap sama persis: judul & urutan kolom tidak berubah.
+- Tab baru **Tanggapan** dibuat otomatis saat pertama kali dipakai. Tidak perlu menjalankan `setupAwal` lagi.
+- Notulen lama tetap utuh dan tampil sebagai daftar bernomor. Bila sebuah sesi diubah lewat editor baru, isinya disimpan sebagai satu dokumen. Sel kolom *Isi* diawali penanda `<!--doc-->`; dokumen panjang atau bergambar otomatis dipecah ke beberapa baris. Jangan ubah sel-sel itu manual di Sheets.
+
+### U1. Backend (±3 menit)
 
 1. Buka spreadsheet **DB Musyawaroh & Pelaporan Bagian Pendidikan** → **Ekstensi → Apps Script**.
-2. Pilih seluruh isi `Kode.gs` (Ctrl + A) → hapus → tempel **seluruh isi `Kode.gs` v1.2.0** → **Ctrl + S**.
+2. Pilih seluruh isi `Kode.gs` (Ctrl + A) → hapus → tempel **seluruh isi `Kode.gs` v1.3.0** → **Ctrl + S**.
    Isian `SETUP_AWAL` dan `MIGRASI` biarkan kosong — tidak dibutuhkan untuk update.
-3. Pilih fungsi **`pasangPemicu`** → ▶ **Jalankan**.
-   Google akan meminta izin baru (**"Mengelola pemicu / berjalan saat Anda tidak ada"**) → **Tinjau izin → Izinkan**.
-   Log harus menampilkan: `✅ Pemicu prosesAntrean terpasang (tiap 1 menit)`.
-4. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+3. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
    ⚠️ Jangan pilih "Deployment baru" — URL `/exec` akan berganti dan aplikasi berhenti.
-5. (Opsional) Jalankan **`cekData`** — log menampilkan `Versi kode: 1.2.0` dan rekap per bulan.
+4. (Opsional) Jalankan **`cekData`** — log menampilkan `Versi kode: 1.3.0`.
+   Jika Anda melompat dari versi di bawah 1.2, jalankan juga **`pasangPemicu`** sekali.
 
 ### U2. Frontend (±5 menit)
 
-1. Ekstrak **`musyawaroh-pelaporan-update-v1.2.0.zip`**.
+1. Ekstrak **`musyawaroh-pelaporan-update-v1.3.0.zip`**.
    ZIP update ini **sengaja tidak berisi `config.js`** supaya URL server Anda tidak tertimpa.
-2. Salin seluruh isinya (`index.html`, `README.md`, `PANDUAN-INSTALASI.md`, folder `assets`) ke **folder repo Anda yang sudah ada** (folder yang berisi `index.html` dan `config.js` — tempat Anda dulu menjalankan `git init`). Pilih **Ganti file di tujuan** saat Windows bertanya.
+2. Salin seluruh isinya (`index.html`, `README.md`, `PANDUAN-INSTALASI.md`, folder `assets`) ke **folder repo Anda yang sudah ada**, yaitu folder yang berisi `index.html` dan `config.js`. Pilih **Ganti file di tujuan** saat Windows bertanya.
+   Ada berkas baru `assets/js/dash.js`; pastikan ikut tersalin.
 3. Buka PowerShell di folder repo itu, lalu jalankan:
 
    ```powershell
@@ -42,15 +64,16 @@ Versi ini hanya mempercepat & mengamankan aplikasi. **Isi spreadsheet, susunan k
    Pastikan `index.html` **dan** `config.js` terlihat. Lalu:
    ```powershell
    git add .
-   git commit -m "Update v1.2.0 - lebih cepat dan tahan sinyal"
+   git commit -m "Update v1.3.0 - musyawaroh, notulen gaya dokumen, dashboard umum"
    git push
    ```
 4. Tunggu 1–2 menit, buka aplikasi, tekan **Ctrl + Shift + R**.
 
 ### U3. Cek hasil
 
-- Bila muncul **kotak kuning "Server belum diperbarui"** → langkah U1-4 (Versi baru) belum dilakukan.
-- Buka **Console** browser (F12) → ketik `Perf.table()` → terlihat waktu tiap panggilan: `total_ms` (dirasakan pengguna) dan `server_ms` (kerja server).
+- Bila muncul **kotak kuning "Server belum diperbarui … butuh 1.3.0"** → langkah U1-3 (Versi baru) belum dilakukan.
+- **Pengaturan → Logo** kini hanya satu slot. Logo kiri yang sudah ada tetap dipakai; logo kanan tidak ditampilkan lagi.
+- **Unduh PDF**: di setiap kartu ada pilihan **"Kop: tanggal & tempat musyawaroh"**. Bawaannya adalah sesi notulen bulan berikutnya dari bulan laporan (mis. laporan September → musyawaroh Oktober), dan bisa diganti.
 
 ---
 
@@ -259,4 +282,5 @@ Satu-satunya proses yang **sengaja menunggu server** adalah **kirim/koreksi lapo
 | Email tidak masuk | Cek spam; pastikan email penerima terisi di **Admin → Pengaturan → Akun & Email** |
 | Perubahan `Kode.gs` tidak berlaku / kotak kuning "Server belum diperbarui" | Belum deploy **Versi baru** (lihat A4 / U1-4) |
 | Email laporan tidak pernah datang setelah update | Pemicu belum terpasang → jalankan `pasangPemicu` (U1-3). Cek **Pemicu** (ikon jam) di Apps Script: harus ada `prosesAntrean` tiap menit |
+| Persen tampil **0.83%** padahal di data lama **83%** (data hasil migrasi v1.2.0 ke bawah) | Pasang `Kode.gs` v1.2.1 → deploy **Versi baru**. Lalu isi `MIGRASI.LAPORAN_SPREADSHEET_ID` & `LAPORAN_TAB`, jalankan **`perbaikiAngkaMigrasi`** dengan `DRY_RUN: true` (pratinjau), lalu `DRY_RUN: false` sekali |
 | Halaman admin "Gagal memuat modul admin" | Berkas `assets/js/admin.js` dll. belum ter-push → ulangi U2 |
