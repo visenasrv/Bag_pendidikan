@@ -13,7 +13,16 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ---
 
-## U. UPDATE KE v1.3.0 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.3.1 (untuk aplikasi yang sudah berjalan)
+
+> **Sudah memasang v1.3.0?** v1.3.1 hanya mengubah **frontend**. Cukup kerjakan **U2** dengan `musyawaroh-pelaporan-update-v1.3.1.zip`; `Kode.gs` tidak perlu diganti.
+> **Masih di v1.2.x?** Kerjakan **U1** (Kode.gs v1.3.0) **dan** U2.
+
+**Tambahan v1.3.1 — Mode Musyawaroh**
+- **Perkecil (Esc):** layar penuh disembunyikan tanpa ditutup. Muncul tombol hijau **Mode Musyawaroh** yang melayang di pojok semua halaman admin; ketuk untuk membuka lagi tepat di slide terakhir, termasuk setelah halaman dimuat ulang. Tombol **×** menutup sepenuhnya.
+- **Catat Notulen (tombol N):** editor notulen terbuka di **samping laporan** yang sedang dibahas. Tombol **＋ Judul: Kelompok …** menyisipkan nama kelompok yang sedang tampil sebagai judul. Menyembunyikan panel atau memperkecil presentasi tidak menghapus tulisan, karena draf tersimpan otomatis. Draf yang sama juga bisa dilanjutkan dari menu **Notulen**.
+
+### Isi v1.3.0
 
 **Yang baru di v1.3.0**
 1. Keterangan Muslimus hanya muncul bila jawabannya **Belum**.
@@ -52,7 +61,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ### U2. Frontend (±5 menit)
 
-1. Ekstrak **`musyawaroh-pelaporan-update-v1.3.0.zip`**.
+1. Ekstrak **`musyawaroh-pelaporan-update-v1.3.1.zip`**.
    ZIP update ini **sengaja tidak berisi `config.js`** supaya URL server Anda tidak tertimpa.
 2. Salin seluruh isinya (`index.html`, `README.md`, `PANDUAN-INSTALASI.md`, folder `assets`) ke **folder repo Anda yang sudah ada**, yaitu folder yang berisi `index.html` dan `config.js`. Pilih **Ganti file di tujuan** saat Windows bertanya.
    Ada berkas baru `assets/js/dash.js`; pastikan ikut tersalin.
@@ -64,7 +73,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
    Pastikan `index.html` **dan** `config.js` terlihat. Lalu:
    ```powershell
    git add .
-   git commit -m "Update v1.3.0 - musyawaroh, notulen gaya dokumen, dashboard umum"
+   git commit -m "Update v1.3.1 - mode musyawaroh bisa diperkecil + catat notulen"
    git push
    ```
 4. Tunggu 1–2 menit, buka aplikasi, tekan **Ctrl + Shift + R**.

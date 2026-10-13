@@ -904,3 +904,39 @@ details.acc summary .badge { font-weight: 600; }
 }
 .dash-filter .field { margin: 0 !important; }
 .dash-filter .field > label { display: flex; align-items: center; gap: 4px; min-height: 22px; }
+
+/* ── v1.3.1: Mode Musyawaroh bisa diperkecil + panel notulen ── */
+body.presenting #toasts, body.presenting .backdrop, body.presenting .overlay { z-index: 320; }
+.present .p-body { flex: 1; display: flex; min-height: 0; position: relative; }
+.present .p-body .p-stage { flex: 1; min-width: 0; }
+.present .p-top .btn.on { background: var(--gold); color: #1F2937; }
+.present .p-top .p-notes-btn { background: rgba(242,201,76,.18); color: #FDE68A; }
+.present .p-top .p-exit { min-width: 40px; padding: 0 10px; }
+@media (max-width: 900px) { .present .hide-s { display: none; } .present .p-top { gap: 8px; padding: 10px 12px; } .present .p-top .btn { padding: 0 10px; } }
+.present .p-notulen { width: min(620px, 46vw); flex: none; display: flex; flex-direction: column; background: var(--bg); border-left: 1px solid var(--border); font-size: 14px; box-shadow: -8px 0 24px -12px rgba(6,78,59,.25); animation: panelIn .18s ease-out; }
+.present .p-notulen.hidden { display: none; }
+@keyframes panelIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.present .pn-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.present .pn-bar .sp { flex: 1; }
+.present .pn-body { flex: 1; overflow: auto; padding: 10px; }
+.present .pn-body .card.lg { padding: 14px; border-radius: 14px; }
+.present .pn-body .gdoc-tb { top: 0; flex-wrap: wrap; overflow: visible; }
+.present .pn-body .gdoc-ruler { display: none; }
+.present .pn-body .gdoc-canvas { padding: 10px 6px 16px; }
+.present .pn-body .gdoc-page { padding: 28px 30px; min-height: 420px; }
+.present.with-notes { font-size: clamp(12px, .85vw, 18px); }
+.present.with-notes .p-grid, .present.with-notes .p-three { grid-template-columns: 1fr; }
+.present.with-notes .slide { padding: 1.6em 4em 2em 4em; }
+@media (max-width: 900px) {
+  .present .p-notulen { position: absolute; inset: 0; width: auto; z-index: 5; }
+}
+.present-pill { padding: 0; gap: 0; bottom: calc(150px + env(safe-area-inset-bottom)); overflow: hidden; background: #064E3B; color: #fff; }
+.present-pill button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; display: inline-flex; align-items: center; }
+.present-pill .pp-open { gap: 10px; padding: 10px 12px 10px 16px; text-align: left; }
+.present-pill .pp-open span { display: grid; line-height: 1.2; }
+.present-pill .pp-open small { opacity: .8; font-size: 12px; }
+.present-pill .pp-x { padding: 10px 12px; border-left: 1px solid rgba(255,255,255,.18); }
+.present-pill .pp-open:hover, .present-pill .pp-x:hover { background: rgba(255,255,255,.1); }
+@media (min-width: 1024px) { .present-pill { bottom: 84px; } }
+.gdoc-tb .tb-sel.gaya { width: 118px; }
+@media (max-width: 640px) { .present .p-top .ttl small { display: none; } .present .p-top .ttl b { font-size: .9em; letter-spacing: .02em; } }

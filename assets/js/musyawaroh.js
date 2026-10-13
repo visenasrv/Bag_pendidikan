@@ -26,7 +26,8 @@
       '<li><b>Ringkasan</b> — status pelaporan & rekap generus</li>' +
       wajib.map(k => { const l = list.find(x => x.KelompokID === k.id); return '<li>' + esc(k.nama) + ' ' + (l ? '<span class="badge ok">Sudah</span>' : '<span class="badge warn">Belum</span>') + '</li>'; }).join('') +
       '<li><b>Notulen terpilih</b> — <span data-n>' + sel.size + '</span> sesi</li></ol>' +
-      '<div class="notice info" style="margin-top:16px">' + icon('info') + '<div>Navigasi: tombol panah di layar, tombol ← → keyboard / klik presenter, atau geser di layar sentuh. Tekan <b>Esc</b> untuk keluar. Daftar hadir tidak ditampilkan.</div></div>' +
+      '<div class="notice info" style="margin-top:16px">' + icon('info') + '<div>Navigasi: tombol panah di layar, tombol ← → keyboard / klik presenter, atau geser di layar sentuh. ' +
+      '<b>Esc / Perkecil</b> menyembunyikan layar penuh tanpa menutupnya — buka lagi lewat tombol <b>Musyawaroh</b> yang melayang di pojok. Tombol <b>Catat Notulen (N)</b> membuka editor notulen di samping laporan. Daftar hadir tidak ditampilkan.</div></div>' +
       '<button class="btn btn-deep btn-block" style="margin-top:18px;min-height:56px;font-size:16px" data-start>' + icon('maximize') + ' Mulai Mode Musyawaroh</button></section>' +
       '<section class="card"><div class="row between"><div class="card-title">' + icon('book') + ' Sesi Notulen</div><span><button class="btn btn-ghost btn-xs" data-all>Semua</button><button class="btn btn-ghost btn-xs" data-none>Kosongkan</button></span></div>' +
       '<div style="margin-top:10px;max-height:420px;overflow:auto">' + (all.length ? all.map(s => '<label class="sesi-item check ' + (sel.has(s.sesiId) ? 'on' : '') + '" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (sel.has(s.sesiId) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b><div class="meta">' + esc(s.tempat) + ' · ' + esc(App.notulenInfo(s)) + '</div></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div></section></div>';
@@ -35,76 +36,221 @@
     c.querySelectorAll('.sesi-item input').forEach(cb => { cb.onchange = () => { if (cb.checked) sel.add(cb.value); else sel.delete(cb.value); cb.closest('.sesi-item').classList.toggle('on', cb.checked); upd(); }; });
     c.querySelector('[data-all]').onclick = () => { all.forEach(s => sel.add(s.sesiId)); c.querySelectorAll('.sesi-item input').forEach(x => { x.checked = true; x.closest('.sesi-item').classList.add('on'); }); upd(); };
     c.querySelector('[data-none]').onclick = () => { sel.clear(); c.querySelectorAll('.sesi-item input').forEach(x => { x.checked = false; x.closest('.sesi-item').classList.remove('on'); }); upd(); };
-    c.querySelector('[data-start]').onclick = () => present(per, all.filter(s => sel.has(s.sesiId)).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))));
+    c.querySelector('[data-start]').onclick = () => {
+      if (LIVE) LIVE.exit();
+      present(per, Array.from(sel), null);
+    };
   }));
 
-  function present(per, sesi) {
+  // ───────────────────────── Presentasi layar penuh ─────────────────────────
+  // Bisa DIPERKECIL (disembunyikan) lalu dibuka lagi dari pil melayang tanpa
+  // kembali ke menu; posisi slide & pilihan notulen diingat (juga setelah muat ulang).
+  const PKEY = 'mp_present';
+  let LIVE = null;
+
+  App.musyawaroh = {
+    state() { return App.ls.get(PKEY); },
+    /** Pil "Musyawaroh" melayang di halaman admin saat presentasi diperkecil */
+    pill() {
+      let p = document.getElementById('ppill');
+      const st = App.ls.get(PKEY);
+      const show = st && st.min && App.auth.valid() && App.path().indexOf('/admin') === 0;
+      if (!show) { if (p) p.remove(); return; }
+      if (!p) {
+        p = document.createElement('div');
+        p.id = 'ppill';
+        p.className = 'pill-float present-pill';
+        p.innerHTML = '<button class="pp-open" data-open></button><button class="pp-x" data-x title="Tutup Mode Musyawaroh" aria-label="Tutup Mode Musyawaroh">' + icon('x', 'sm') + '</button>';
+        p.querySelector('[data-open]').onclick = () => App.musyawaroh.resume();
+        p.querySelector('[data-x]').onclick = () => App.musyawaroh.exit();
+        document.body.appendChild(p);
+      }
+      p.querySelector('[data-open]').innerHTML = icon('present') + '<span><b>Mode Musyawaroh</b><small>' + esc(App.periode(st.bulan, st.tahun)) + (st.tab ? ' · ' + esc(st.tab) : '') + '</small></span>' + icon('maximize', 'sm');
+    },
+    resume() {
+      if (LIVE) { LIVE.restore(); return; }
+      const st = App.ls.get(PKEY);
+      if (st) present({ bulan: st.bulan, tahun: st.tahun }, st.sesi || [], st.key);
+    },
+    exit() { if (LIVE) LIVE.exit(); else { App.ls.del(PKEY); App.musyawaroh.pill(); } },
+  };
+  window.addEventListener('hashchange', () => App.musyawaroh.pill());
+
+  function bangunSlide(per, sesiIds) {
     const list = B.laporanPeriode(per.bulan, per.tahun);
     const wajib = B.wajib();
-    const slides = [{ t: 'ringkasan', tab: 'Ringkasan' }];
-    wajib.forEach(k => slides.push({ t: 'kelompok', k: k, l: list.find(x => x.KelompokID === k.id), tab: k.nama }));
-    list.filter(l => !wajib.some(k => k.id === l.KelompokID)).forEach(l => slides.push({ t: 'kelompok', k: { nama: B.namaKelompok(l) }, l: l, tab: B.namaKelompok(l) }));
-    sesi.forEach(s => slides.push({ t: 'notulen', s: s, tab: 'Notulen ' + App.fmtTanggal(s.tanggal, true) }));
+    const slides = [{ t: 'ringkasan', tab: 'Ringkasan', key: 'r' }];
+    wajib.forEach(k => slides.push({ t: 'kelompok', k: k, l: list.find(x => x.KelompokID === k.id), tab: k.nama, key: 'k:' + k.id }));
+    list.filter(l => !wajib.some(k => k.id === l.KelompokID)).forEach(l => slides.push({ t: 'kelompok', k: { nama: B.namaKelompok(l) }, l: l, tab: B.namaKelompok(l), key: 'l:' + l.ID }));
+    B.notulen().filter(s => sesiIds.indexOf(s.sesiId) >= 0).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)))
+      .forEach(s => slides.push({ t: 'notulen', s: s, tab: 'Notulen ' + App.fmtTanggal(s.tanggal, true), key: 'n:' + s.sesiId }));
+    return { list: list, wajib: wajib, slides: slides };
+  }
 
+  function present(per, sesiIds, startKey) {
+    let data = bangunSlide(per, sesiIds);
     const meta = App.meta();
     const el = App.html('<div class="present" tabindex="-1">' +
       '<div class="p-top">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') +
       '<div class="hide-m" style="line-height:1.2"><b style="display:block">' + esc(meta.sub.split('·')[0].trim()) + '</b><small style="opacity:.8;letter-spacing:.06em">BAGIAN PENDIDIKAN</small></div>' +
       '<div class="ttl"><b>Musyawaroh Bagian Pendidikan · ' + esc(App.periode(per.bulan, per.tahun)) + '</b><small>● Sesi Musyawaroh Pleno</small></div>' +
-      '<span class="count" data-count></span><button class="btn" data-exit>' + icon('minimize') + ' Keluar (Esc)</button></div>' +
-      '<div class="p-stage" data-stage><button class="nav-arrow l" data-prev aria-label="Sebelumnya">' + icon('chevL', 'lg') + '</button><button class="nav-arrow r" data-next aria-label="Berikutnya">' + icon('chevR', 'lg') + '</button></div>' +
-      '<div class="p-tabs" data-tabs>' + slides.map((s, i) => '<button class="p-tab" data-i="' + i + '">' + (i + 1) + ' ' + esc(s.tab) + (s.t === 'kelompok' && !s.l ? ' <span class="badge warn">Belum</span>' : '') + '</button>').join('') +
-      '<span class="muted hide-m" style="margin-left:auto;font-size:.75em;align-self:center;white-space:nowrap">← → atau geser untuk pindah</span></div></div>');
+      '<span class="count" data-count></span>' +
+      '<button class="btn p-notes-btn" data-notes title="Catat notulen (N)">' + icon('edit') + '<span class="hide-s"> Catat Notulen</span></button>' +
+      '<button class="btn" data-min title="Perkecil — buka lagi dari tombol melayang (Esc)">' + icon('minimize') + '<span class="hide-s"> Perkecil</span></button>' +
+      '<button class="btn p-exit" data-exit title="Tutup Mode Musyawaroh" aria-label="Tutup Mode Musyawaroh">' + icon('x') + '</button></div>' +
+      '<div class="p-body"><div class="p-stage" data-stage><button class="nav-arrow l" data-prev aria-label="Sebelumnya">' + icon('chevL', 'lg') + '</button><button class="nav-arrow r" data-next aria-label="Berikutnya">' + icon('chevR', 'lg') + '</button></div>' +
+      '<aside class="p-notulen hidden" data-panel aria-label="Catat notulen"><div class="pn-bar"><button class="btn btn-soft btn-sm" data-judul></button><span class="sp"></span>' +
+      '<button class="icon-btn" data-hide title="Sembunyikan panel (draf tetap tersimpan)" aria-label="Sembunyikan panel">' + icon('chevR') + '</button></div><div class="pn-body" data-pbody></div></aside></div>' +
+      '<div class="p-tabs" data-tabs></div></div>');
     document.body.appendChild(el);
-    document.body.style.overflow = 'hidden';
     const stage = el.querySelector('[data-stage]');
-    let idx = 0;
+    const panel = el.querySelector('[data-panel]');
+    let idx = 0, min = false, closed = false, editor = null;
 
+    const simpanState = () => {
+      const s = data.slides[idx] || {};
+      App.ls.set(PKEY, { bulan: per.bulan, tahun: per.tahun, sesi: sesiIds, key: s.key, tab: s.tab, min: min });
+    };
+    const gambarTab = () => {
+      el.querySelector('[data-tabs]').innerHTML = data.slides.map((s, i) => '<button class="p-tab" data-i="' + i + '">' + (i + 1) + ' ' + esc(s.tab) + (s.t === 'kelompok' && !s.l ? ' <span class="badge warn">Belum</span>' : '') + '</button>').join('') +
+        '<span class="muted hide-m" style="margin-left:auto;font-size:.75em;align-self:center;white-space:nowrap">← → pindah · N notulen · Esc perkecil</span>';
+      el.querySelectorAll('.p-tab').forEach(t => { t.onclick = () => { const i = +t.getAttribute('data-i'); show(i, i < idx); }; });
+    };
+    const judulBtn = () => {
+      const s = data.slides[idx] || {};
+      const b = el.querySelector('[data-judul]');
+      const teks = s.t === 'kelompok' ? 'Kelompok ' + s.k.nama : s.t === 'ringkasan' ? 'Ringkasan ' + App.periode(per.bulan, per.tahun) : '';
+      b.classList.toggle('hidden', !teks);
+      b.innerHTML = icon('plus', 'sm') + ' Judul: ' + esc(teks);
+      b.onclick = () => { if (editor && teks) editor.judul(teks); };
+    };
     const show = (i, back) => {
-      idx = Math.max(0, Math.min(slides.length - 1, i));
+      idx = Math.max(0, Math.min(data.slides.length - 1, i));
       stage.querySelectorAll('.slide').forEach(s => s.remove());
-      const s = App.html('<div class="slide ' + (back ? 'back' : '') + '">' + slideHtml(slides[idx], per, list, wajib) + '</div>');
-      stage.appendChild(s);
-      bindTanggapan(s, slides[idx], per, list, wajib);
-      el.querySelector('[data-count]').textContent = (idx + 1) + ' / ' + slides.length;
+      const sl = App.html('<div class="slide ' + (back ? 'back' : '') + '">' + slideHtml(data.slides[idx], per, data.list, data.wajib) + '</div>');
+      stage.appendChild(sl);
+      bindTanggapan(sl, data.slides[idx], per, data.list, data.wajib);
+      el.querySelector('[data-count]').textContent = (idx + 1) + ' / ' + data.slides.length;
       el.querySelector('[data-prev]').disabled = idx === 0;
-      el.querySelector('[data-next]').disabled = idx === slides.length - 1;
+      el.querySelector('[data-next]').disabled = idx === data.slides.length - 1;
       el.querySelectorAll('.p-tab').forEach((t, j) => t.classList.toggle('on', j === idx));
       const on = el.querySelector('.p-tab.on');
       if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+      judulBtn();
+      simpanState();
     };
-    const next = () => { if (idx < slides.length - 1) show(idx + 1); };
+    const next = () => { if (idx < data.slides.length - 1) show(idx + 1); };
     const prev = () => { if (idx > 0) show(idx - 1, true); };
 
-    let closed = false;
-    const exit = () => {
-      if (closed) return;
-      closed = true;
+    // ── Panel notulen di samping laporan ──
+    const tutupPanel = () => {
+      if (!editor) return;
+      const e = editor; editor = null;
+      e.destroy();
+      panel.classList.add('hidden');
+      el.classList.remove('with-notes');
+      el.querySelector('[data-notes]').classList.remove('on');
+      el.querySelector('[data-pbody]').innerHTML = '';
+      el.focus({ preventScroll: true });
+    };
+    const bukaPanel = () => {
+      if (editor) return;
+      panel.classList.remove('hidden');
+      el.classList.add('with-notes');
+      el.querySelector('[data-notes]').classList.add('on');
+      editor = App.notulenEditor.mount(el.querySelector('[data-pbody]'), alasan => {
+        if (alasan === 'saved') App.toast('Notulen tersimpan. Bisa dilihat di menu Notulen.');
+        if (editor) { const e = editor; editor = null; e.destroy(); }
+        panel.classList.add('hidden'); el.classList.remove('with-notes'); el.querySelector('[data-notes]').classList.remove('on');
+        el.querySelector('[data-pbody]').innerHTML = '';
+        el.focus({ preventScroll: true });
+      }, { embedded: true });
+      judulBtn();
+    };
+    const togglePanel = () => { if (editor) editor.simpanDraf(); else bukaPanel(); };   // menyembunyikan = simpan draf
+    el.querySelector('[data-notes]').onclick = togglePanel;
+    el.querySelector('[data-hide]').onclick = () => { if (editor) editor.simpanDraf(); };
+
+    // ── Perkecil / buka lagi / keluar ──
+    const layarPenuh = () => {
+      const d = document.documentElement;   // seluruh halaman → dialog & notifikasi tetap terlihat di atas presentasi
+      if (d.requestFullscreen && !document.fullscreenElement) d.requestFullscreen().catch(() => { /* ditolak: tetap tampil sebagai lapisan penuh */ });
+    };
+    const keluarLayarPenuh = () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
+    const pasang = () => {
+      document.addEventListener('keydown', onKey, true);
+      document.addEventListener('fullscreenchange', onFs);
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('presenting');
+    };
+    const lepas = () => {
       document.removeEventListener('keydown', onKey, true);
       document.removeEventListener('fullscreenchange', onFs);
       document.body.style.overflow = '';
+      document.body.classList.remove('presenting');
+    };
+    const minimize = () => {
+      if (min || closed) return;
+      if (editor) editor.simpanDraf();
+      min = true;
+      lepas();
+      el.style.display = 'none';
+      keluarLayarPenuh();
+      simpanState();
+      App.musyawaroh.pill();
+      App.toast('Mode Musyawaroh diperkecil. Ketuk tombol "Mode Musyawaroh" di pojok untuk membuka lagi.', 'info');
+    };
+    const restore = () => {
+      if (closed) return;
+      // susun ulang dari data terbaru (laporan/tanggapan/notulen bisa berubah selama diperkecil)
+      const key = (data.slides[idx] || {}).key;
+      data = bangunSlide(per, sesiIds);
+      gambarTab();
+      const j = data.slides.findIndex(s => s.key === key);
+      min = false;
+      el.style.display = '';
+      pasang();
+      layarPenuh();
+      show(j >= 0 ? j : Math.min(idx, data.slides.length - 1));
+      App.musyawaroh.pill();
+      el.focus({ preventScroll: true });
+    };
+    const exit = () => {
+      if (closed) return;
+      if (editor) editor.simpanDraf();
+      closed = true;
+      lepas();
       el.remove();
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      keluarLayarPenuh();
+      LIVE = null;
+      App.ls.del(PKEY);
+      App.musyawaroh.pill();
     };
     const onKey = e => {
       const t = e.target;
-      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) {
+      if (t && t.closest && (t.closest('[data-panel]') || t.closest('.backdrop'))) {
+        if (e.key === 'Escape' && t.closest('[data-panel]') && !document.querySelector('.backdrop')) { e.preventDefault(); if (editor) editor.simpanDraf(); }
+        return;   // sedang mengetik notulen / dialog terbuka
+      }
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.isContentEditable)) {
         // sedang mengetik tanggapan → tombol navigasi tidak dipakai
         if (e.key === 'Escape') { e.preventDefault(); const b = t.closest('.tg-edit') && t.closest('.tg-edit').querySelector('[data-tgcancel]'); if (b) b.click(); else t.blur(); }
         return;
       }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (['ArrowRight', 'PageDown', ' ', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); next(); }
       else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); prev(); }
       else if (e.key === 'Home') { e.preventDefault(); show(0, true); }
-      else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
-      else if (e.key === 'Escape') { e.preventDefault(); exit(); }
+      else if (e.key === 'End') { e.preventDefault(); show(data.slides.length - 1); }
+      else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); togglePanel(); }
+      else if (e.key === 'Escape') { e.preventDefault(); minimize(); }
     };
-    const onFs = () => { if (!document.fullscreenElement) exit(); };
-    document.addEventListener('keydown', onKey, true);
+    // Esc dari browser (keluar layar penuh) = perkecil, bukan menutup → posisi tidak hilang
+    const onFs = () => { if (!document.fullscreenElement && !min && !closed && !el._abaikanFs) minimize(); };
     el.querySelector('[data-next]').onclick = next;
     el.querySelector('[data-prev]').onclick = prev;
+    el.querySelector('[data-min]').onclick = minimize;
     el.querySelector('[data-exit]').onclick = exit;
-    el.querySelectorAll('.p-tab').forEach(t => { t.onclick = () => { const i = +t.getAttribute('data-i'); show(i, i < idx); }; });
     let sx = 0, sy = 0;
     stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
     stage.addEventListener('touchend', e => {
@@ -112,12 +258,14 @@
       const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
       if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) { if (dx < 0) next(); else prev(); }
     }, { passive: true });
-    App.onLeave(exit);
 
-    show(0);
-    if (el.requestFullscreen) {
-      el.requestFullscreen().then(() => document.addEventListener('fullscreenchange', onFs)).catch(() => { /* layar penuh ditolak: tetap tampil sebagai lapisan penuh */ });
-    }
+    LIVE = { restore: restore, minimize: minimize, exit: exit };
+    gambarTab();
+    const j0 = startKey ? data.slides.findIndex(s => s.key === startKey) : 0;
+    pasang();
+    show(j0 >= 0 ? j0 : 0);
+    layarPenuh();
+    App.musyawaroh.pill();
     el.focus();
   }
 

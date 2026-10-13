@@ -181,7 +181,10 @@
       p.innerHTML = icon('edit') + '<span>Notulen ' + (d.mode === 'ubah' ? '(ubah)' : '') + ' · ' + jumlahKata(d.doc) + ' kata</span>' + icon('chevU', 'sm');
     },
 
-    mount(el, onDone) {
+    /** opt.embedded = dipasang di panel Mode Musyawaroh. Mengembalikan { destroy(), judul(teks) }. */
+    mount(el, onDone, opt) {
+      opt = opt || {};
+      const bersih = [];
       let d = Ed.draft();
       if (!d || d.minimized === undefined) d = Ed.baru();
       if (d.minimized) { d.minimized = false; }
@@ -339,7 +342,8 @@
       };
       const onSelChange = () => { const s = getSelection(); if (s.rangeCount && dalam(s.anchorNode)) { simpanSel(); status(); } };
       document.addEventListener('selectionchange', onSelChange);
-      App.onLeave(() => document.removeEventListener('selectionchange', onSelChange));
+      bersih.push(() => document.removeEventListener('selectionchange', onSelChange));
+      if (!opt.embedded) App.onLeave(() => document.removeEventListener('selectionchange', onSelChange));
 
       // ── Ukuran font ──
       const setUkuran = pt => {
@@ -540,7 +544,8 @@
       q('[data-font]').onchange = e => exec('fontName', e.target.value);
       const luarPop = e => { if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !(pop._for && pop._for.contains && pop._for.contains(e.target))) tutupPop(); };
       document.addEventListener('mousedown', luarPop);
-      App.onLeave(() => document.removeEventListener('mousedown', luarPop));
+      bersih.push(() => document.removeEventListener('mousedown', luarPop));
+      if (!opt.embedded) App.onLeave(() => document.removeEventListener('mousedown', luarPop));
 
       // ── Ketik, tempel, pintasan ──
       page.addEventListener('input', () => { simpanSel(); sinkron(); });
@@ -584,7 +589,12 @@
       const lain = q('[data-lain]');
       if (lain) lain.oninput = App.debounce(() => { d.tempatLain = lain.value; persist(); judul(); }, 350);
 
-      q('[data-min]').onclick = () => { d.doc = page.innerHTML; d.minimized = true; Ed.save(d); App.toast('Notulen diperkecil. Ketuk pil di pojok untuk melanjutkan.', 'info'); onDone && onDone('min'); };
+      const perkecil = diam => {
+        d.doc = page.innerHTML; d.minimized = true; Ed.save(d);
+        if (!diam) App.toast(opt.embedded ? 'Notulen disimpan sebagai draf. Buka lagi kapan saja.' : 'Notulen diperkecil. Ketuk pil di pojok untuk melanjutkan.', 'info');
+        onDone && onDone('min');
+      };
+      q('[data-min]').onclick = () => perkecil(false);
       const tutup = async () => {
         d.doc = page.innerHTML;
         if (Ed.hasContent(d)) {
@@ -642,6 +652,27 @@
         const s = getSelection(); s.removeAllRanges(); s.addRange(r);
         simpanSel(); status();
       }, 60);
+
+      return {
+        /** lepas semua pendengar global (dipakai panel Mode Musyawaroh) */
+        destroy() { bersih.forEach(f => { try { f(); } catch (e) { /* abaikan */ } }); },
+        /** simpan draf tanpa menutup (mis. saat panel disembunyikan) */
+        simpanDraf() { if (page.isConnected) perkecil(true); },
+        /** sisipkan judul (mis. nama kelompok yang sedang dibahas) di akhir dokumen, kursor siap mengetik di bawahnya */
+        judul(teks) {
+          const last = page.lastElementChild;
+          const kosong = last && last.nodeName === 'P' && !textOf(last.innerHTML) && !last.querySelector('img');
+          const h = document.createElement('h2'); h.textContent = teks;
+          const p0 = document.createElement('p'); p0.appendChild(document.createElement('br'));
+          if (kosong) { page.insertBefore(h, last); } else { page.appendChild(h); page.appendChild(p0); }
+          const target = kosong ? last : p0;
+          page.focus({ preventScroll: true });
+          const r = document.createRange(); r.setStart(target, 0); r.collapse(true);
+          const sl = getSelection(); sl.removeAllRanges(); sl.addRange(r);
+          simpanSel(); sinkron(); status();
+          target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        },
+      };
     },
   });
 

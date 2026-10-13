@@ -40,4 +40,4 @@ assets/js/
 | `#/notulen` | Notulen |
 | `#/admin` | Admin (login) |
 
-Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.3.0** (tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).
+Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.3.1** (Mode Musyawaroh bisa diperkecil & catat notulen dari layar penuh; tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).

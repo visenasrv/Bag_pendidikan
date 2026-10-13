@@ -68,6 +68,7 @@
       void c.offsetWidth;
       window.scrollTo(0, 0);
       App.notulenEditor.pill();
+      if (App.musyawaroh) App.musyawaroh.pill();
       return c;
     },
 
@@ -124,6 +125,7 @@
   async function logout() {
     const ok = await App.confirm({ title: 'Keluar dari admin?', message: Store.queue.length ? 'Masih ada ' + Store.queue.length + ' perubahan yang sedang dikirim. Tunggu sampai tersimpan sebelum keluar.' : 'Anda perlu masuk lagi untuk membuka halaman admin.', ok: 'Keluar', danger: true });
     if (!ok) return;
+    if (App.musyawaroh) App.musyawaroh.exit();
     App.api.raw('logout', {}, { post: true }).catch(() => {});
     App.auth.clear();
     App.ls.del('mp_bundle');
