@@ -14,8 +14,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css">
+  <!-- Font dimuat tanpa memblok tampilan pertama (Prinsip 9) -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="assets/css/style.css?v=1.2.0">
 
   <!-- Terapkan tema sebelum halaman digambar (tanpa kedipan) -->
   <script>
@@ -44,17 +46,14 @@
     <p style="padding:24px;font-family:sans-serif">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</p>
   </noscript>
 
-  <script src="config.js"></script>
-  <script src="assets/js/core.js" defer></script>
-  <script src="assets/js/schema.js" defer></script>
-  <script src="assets/js/pdf.js" defer></script>
-  <script src="assets/js/form.js" defer></script>
-  <script src="assets/js/public.js" defer></script>
-  <script src="assets/js/notulen.js" defer></script>
-  <script src="assets/js/admin.js" defer></script>
-  <script src="assets/js/hadir.js" defer></script>
-  <script src="assets/js/musyawaroh.js" defer></script>
-  <script src="assets/js/pengaturan.js" defer></script>
-  <script src="assets/js/app.js" defer></script>
+  <script src="config.js?v=1.2.0"></script>
+  <script src="assets/js/core.js?v=1.2.0" defer></script>
+  <script src="assets/js/schema.js?v=1.2.0" defer></script>
+  <script src="assets/js/pdf.js?v=1.2.0" defer></script>
+  <script src="assets/js/form.js?v=1.2.0" defer></script>
+  <script src="assets/js/public.js?v=1.2.0" defer></script>
+  <script src="assets/js/notulen.js?v=1.2.0" defer></script>
+  <!-- Modul admin (admin, hadir, musyawaroh, pengaturan) dimuat otomatis saat #/admin dibuka -->
+  <script src="assets/js/app.js?v=1.2.0" defer></script>
 </body>
 </html>

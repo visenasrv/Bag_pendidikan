@@ -5,5 +5,5 @@
  * lalu simpan dan push ulang ke GitHub.
  */
 window.APP_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzjvxwGtDAaWgJ7TGZ7O4jUr1ZbBxK6EpDJQb2tRQcddD0GqLlkS2xU0KKuJ0ylIviNoQ/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzf5UDgtIlE3jthECrCDLoJsPLStyF-pzT5xlxLzZUKw0X4IczH9E7IEdlEC-ZCLwZxQQ/exec',
 };

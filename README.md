@@ -19,10 +19,10 @@ assets/js/
   schema.js         struktur formulir laporan (9 bagian)
   form.js           mesin formulir bertahap + draf otomatis
   public.js         Beranda, Isi/Koreksi Laporan, Dashboard, Notulen publik
-  admin.js          Login, Dashboard admin, Kelola Laporan, Notulen, Unduh PDF
-  hadir.js          Daftar Hadir
-  musyawaroh.js     Mode Musyawaroh
-  pengaturan.js     Kelompok & Dapuan, Logo, Akun, Tempat, Tampilan
+  admin.js          Login, Dashboard admin, Kelola Laporan, Notulen, Unduh PDF   ┐ modul admin —
+  hadir.js          Daftar Hadir                                                │ diunduh otomatis
+  musyawaroh.js     Mode Musyawaroh                                             │ saat #/admin
+  pengaturan.js     Kelompok & Dapuan, Logo, Akun, Tempat, Tampilan             ┘ dibuka
   notulen.js        tampilan & editor notulen
   pdf.js            PDF (jsPDF)
   app.js            titik mulai
@@ -39,4 +39,4 @@ assets/js/
 | `#/notulen` | Notulen |
 | `#/admin` | Admin (login) |
 
-Panduan pemasangan lengkap: **PANDUAN-INSTALASI.md**.
+Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.2.0** (performa: login 1 panggilan, kirim ulang aman, modul admin terpisah, cache berversi).

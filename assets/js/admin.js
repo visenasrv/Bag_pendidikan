@@ -206,9 +206,13 @@
         const r = await App.api.call('login', { username: root.querySelector('#u').value.trim(), password: pw.value }, { post: true });
         App.auth.set(r.token, r.username, r.exp);
         if (!App.ls.get('mp_seen_laporan')) App.ls.set('mp_seen_laporan', Date.now());
-        const pr = Store.refresh(true).catch(() => {});
+        if (r.bundle) {
+          // Prinsip 3: data admin ikut dalam balasan login → langsung tampil tanpa panggilan kedua
+          Store.data = r.bundle; Store.lastFetch = Date.now(); Store.persist(); App.cekVersi(r.bundle.versi);
+        } else {
+          await Store.refresh(true).catch(() => {});   // server versi lama
+        }
         App.toast('Assalamu\'alaikum, selamat datang.');
-        if (!Store.data) await pr;
         if (App.alive(vid)) App.go(lanjut, true);
         if (Store.queue.length) Store.pump();
       } catch (er) {

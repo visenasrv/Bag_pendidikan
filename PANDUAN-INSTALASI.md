@@ -5,9 +5,52 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.2.0.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
+
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.2.0** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+
+---
+
+## U. UPDATE KE v1.2.0 (untuk aplikasi yang sudah berjalan)
+
+Versi ini hanya mempercepat & mengamankan aplikasi. **Isi spreadsheet, susunan kolom, dan tampilan tidak berubah.**
+
+### U1. Backend (±5 menit)
+
+1. Buka spreadsheet **DB Musyawaroh & Pelaporan Bagian Pendidikan** → **Ekstensi → Apps Script**.
+2. Pilih seluruh isi `Kode.gs` (Ctrl + A) → hapus → tempel **seluruh isi `Kode.gs` v1.2.0** → **Ctrl + S**.
+   Isian `SETUP_AWAL` dan `MIGRASI` biarkan kosong — tidak dibutuhkan untuk update.
+3. Pilih fungsi **`pasangPemicu`** → ▶ **Jalankan**.
+   Google akan meminta izin baru (**"Mengelola pemicu / berjalan saat Anda tidak ada"**) → **Tinjau izin → Izinkan**.
+   Log harus menampilkan: `✅ Pemicu prosesAntrean terpasang (tiap 1 menit)`.
+4. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+   ⚠️ Jangan pilih "Deployment baru" — URL `/exec` akan berganti dan aplikasi berhenti.
+5. (Opsional) Jalankan **`cekData`** — log menampilkan `Versi kode: 1.2.0` dan rekap per bulan.
+
+### U2. Frontend (±5 menit)
+
+1. Ekstrak **`musyawaroh-pelaporan-update-v1.2.0.zip`**.
+   ZIP update ini **sengaja tidak berisi `config.js`** supaya URL server Anda tidak tertimpa.
+2. Salin seluruh isinya (`index.html`, `README.md`, `PANDUAN-INSTALASI.md`, folder `assets`) ke **folder repo Anda yang sudah ada** (folder yang berisi `index.html` dan `config.js` — tempat Anda dulu menjalankan `git init`). Pilih **Ganti file di tujuan** saat Windows bertanya.
+3. Buka PowerShell di folder repo itu, lalu jalankan:
+
+   ```powershell
+   dir
+   ```
+   Pastikan `index.html` **dan** `config.js` terlihat. Lalu:
+   ```powershell
+   git add .
+   git commit -m "Update v1.2.0 - lebih cepat dan tahan sinyal"
+   git push
+   ```
+4. Tunggu 1–2 menit, buka aplikasi, tekan **Ctrl + Shift + R**.
+
+### U3. Cek hasil
+
+- Bila muncul **kotak kuning "Server belum diperbarui"** → langkah U1-4 (Versi baru) belum dilakukan.
+- Buka **Console** browser (F12) → ketik `Perf.table()` → terlihat waktu tiap panggilan: `total_ms` (dirasakan pengguna) dan `server_ms` (kerja server).
 
 ---
 
@@ -181,6 +224,13 @@ Jika browser masih menampilkan versi lama: **Ctrl + Shift + R**.
 | **CacheService di server** (cache tabel ber-chunk) | Permintaan baca tidak membuka Sheets berulang-ulang |
 | **Baca/tulis batch** (`getValues`/`setValues`) + `LockService` | Penulisan cepat & aman dari tabrakan |
 | **Pustaka dimuat saat dibutuhkan** (grafik, PDF, drag-drop) | Halaman publik ringan di HP |
+| **Modul admin terpisah** (v1.2) | HP kelompok tidak mengunduh kode admin; modul admin diunduh saat `#/admin` dibuka |
+| **Login membawa data admin** (v1.2) | Masuk admin = 1 panggilan server, bukan 2 berurutan |
+| **Email & log lewat antrean** (v1.2) | Kirim laporan tidak menunggu email terkirim; email dikirim pemicu dalam ±1 menit |
+| **Cache berversi + `onEdit`** (v1.2) | Cache hanya diperbarui untuk tab yang berubah; edit manual di Sheets langsung terbaca |
+| **Kirim ulang aman (`reqId`)** (v1.2) | Sinyal putus saat menyimpan → dikirim ulang otomatis tanpa data ganda; kelompok tetap mendapat kode koreksi yang sama |
+| **Tahan sinyal HP** (v1.2) | Baca diulang otomatis 3×, menunggu sinyal kembali, server "dibangunkan" saat aplikasi dibuka |
+| **Tulis blok** (v1.2) | Mengubah 1 laporan menulis 1 baris saja di sheet |
 
 Satu-satunya proses yang **sengaja menunggu server** adalah **kirim/koreksi laporan oleh kelompok** — sesuai PRD (K6), pesan sukses dan kode koreksi hanya muncul setelah server benar-benar menyimpan.
 
@@ -191,7 +241,8 @@ Satu-satunya proses yang **sengaja menunggu server** adalah **kirim/koreksi lapo
 - **Isian formulir** sudah mengikuti formulir lama *Laporan PJP Klp Desa SS* (53 kolom), termasuk prosentase kehadiran & materi, laporan kelas di link, laporan lainnya & kendala per jenjang, jadwal & kehadiran tahfidz, dan usulan/info. Untuk menambah isian baru, ubah dua tempat:
   1. `assets/js/schema.js` (label & aturan tampilan)
   2. `FORM_KEYS` di `Kode.gs` (tambahkan di akhir daftar)
-- **Data diedit manual di Sheets** akan tampil paling lambat 5 menit kemudian (cache). Agar langsung tampil, jalankan fungsi `bersihkanCache` di editor Apps Script, atau dari menu spreadsheet **⚙️ Musyawaroh → Bersihkan cache aplikasi**.
+- **Data diedit manual di Sheets** langsung terbaca aplikasi (pemicu `onEdit` menandai tab yang berubah). Jika diubah lewat cara lain (impor, rumus, skrip lain), jalankan `bersihkanCache` atau menu spreadsheet **⚙️ Musyawaroh → Bersihkan cache aplikasi**.
+- **Email notifikasi** dikirim pemicu `prosesAntrean` tiap 1 menit. Untuk kembali ke email langsung (tanpa pemicu), jalankan `lepasPemicu`.
 - **Lupa password admin:** isi `SETUP_AWAL.password`, jalankan `resetPasswordAdmin`, lalu kosongkan lagi.
 - **Login terblokir** (5× salah): tunggu 15 menit, atau jalankan `bukaBlokirLogin`.
 - **Pertama kali dibuka pagi hari** server Google bisa butuh 2–4 detik untuk "bangun". Setelah itu cepat.
@@ -206,4 +257,6 @@ Satu-satunya proses yang **sengaja menunggu server** adalah **kirim/koreksi lapo
 | 404 di GitHub Pages | `index.html` tidak di root repo → lihat B1 & B3 |
 | Tampilan polos tanpa warna | Struktur folder `assets/` rusak (upload lewat web GitHub) → push ulang lewat PowerShell |
 | Email tidak masuk | Cek spam; pastikan email penerima terisi di **Admin → Pengaturan → Akun & Email** |
-| Perubahan `Kode.gs` tidak berlaku | Belum deploy **Versi baru** (lihat A4) |
+| Perubahan `Kode.gs` tidak berlaku / kotak kuning "Server belum diperbarui" | Belum deploy **Versi baru** (lihat A4 / U1-4) |
+| Email laporan tidak pernah datang setelah update | Pemicu belum terpasang → jalankan `pasangPemicu` (U1-3). Cek **Pemicu** (ikon jam) di Apps Script: harus ada `prosesAntrean` tiap menit |
+| Halaman admin "Gagal memuat modul admin" | Berkas `assets/js/admin.js` dll. belum ter-push → ulangi U2 |

@@ -141,10 +141,16 @@
 
   async function kirim(d, form, vid) {
     const ov = App.overlay('Mengirim laporan…');
+    // reqId disimpan di perangkat per kelompok+periode: bila sinyal putus setelah server menyimpan,
+    // "Coba Lagi" (bahkan setelah halaman dimuat ulang) mengembalikan hasil & kode koreksi yang sama.
+    const kunci = d.KelompokID + '|' + d.Bulan + '|' + d.Tahun;
+    let rq = App.ls.get('mp_lapor_req');
+    if (!rq || rq.k !== kunci) { rq = { k: kunci, id: App.reqId() }; App.ls.set('mp_lapor_req', rq); }
     try {
       const payload = Object.assign({}, d, { appUrl: location.href.split('#')[0] });
-      const res = await App.api.call('kirimLaporan', payload, { timeout: 60000 });
+      const res = await App.api.call('kirimLaporan', payload, { reqId: rq.id });
       ov.close();
+      App.ls.del('mp_lapor_req');
       form.done = true;
       form.clearDraft();
       App.swrBust('dash_' + d.Tahun);
@@ -257,7 +263,9 @@
         try {
           const isian = {};
           App.FORM_KEYS.forEach(k => { isian[k] = d[k] === undefined ? '' : d[k]; });
-          const r = await App.api.call('simpanKoreksi', Object.assign({}, q, { isian: isian, appUrl: location.href.split('#')[0] }), { timeout: 60000 });
+          form._reqId = form._reqId || App.reqId();   // "Coba Lagi" memakai reqId yang sama
+          const r = await App.api.call('simpanKoreksi', Object.assign({}, q, { isian: isian, appUrl: location.href.split('#')[0] }), { reqId: form._reqId });
+          form._reqId = null;
           ov.close();
           App.swrBust('dash_' + q.tahun);
           koreksiTersimpan(Object.assign({}, d, { NamaKelompok: nama, WaktuKirim: lap.WaktuKirim, WaktuUbah: r.waktuUbah, DiubahOleh: 'Kelompok' }));

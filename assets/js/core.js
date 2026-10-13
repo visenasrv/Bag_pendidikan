@@ -185,56 +185,108 @@
 
   const GET_ACTIONS = { ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1 };
 
+  // ── Prinsip 0: pengukur. Ketik Perf.table() di Console browser untuk melihat 30 panggilan terakhir ──
+  const Perf = (window.Perf = {
+    rows: [],
+    add(action, total, server, tries) {
+      this.rows.push({ aksi: action, total_ms: total, server_ms: server == null ? null : server, jaringan_ms: server == null ? null : total - server, coba: tries || 1, jam: new Date().toLocaleTimeString('id-ID') });
+      if (this.rows.length > 200) this.rows.shift();
+    },
+    table() { console.table(this.rows.slice(-30)); },
+  });
+
+  /** Aksi baca: aman diulang otomatis. Aksi lain = tulis → membawa reqId (aman diulang tanpa data ganda). */
+  const READ_ACTIONS = {
+    ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1,
+    bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1,
+  };
+  App.isRead = a => !!READ_ACTIONS[a];
+  App.reqId = () => App.uuid();
+
+  function waitOnline(ms) {
+    return new Promise(r => {
+      if (navigator.onLine !== false) return r();
+      const done = () => { clearTimeout(t); window.removeEventListener('online', done); r(); };
+      const t = setTimeout(done, ms);
+      window.addEventListener('online', done);
+    });
+  }
+
   App.api = {
     url() { return ((window.APP_CONFIG || {}).API_URL || '').trim(); },
     configured() { const u = this.url(); return !!u && !/TEMPEL_ID/i.test(u); },
 
-    async _fetch(url, init, timeoutMs) {
+    /** Satu percobaan. Tidak pernah melempar: selalu {ok,...}; kegagalan jaringan ditandai retryable. */
+    async _once(url, init, timeoutMs) {
       const ctl = window.AbortController ? new AbortController() : null;
-      const t = ctl ? setTimeout(() => ctl.abort(), timeoutMs || 30000) : null;
+      const t = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
       try {
         const res = await fetch(url, Object.assign({ cache: 'no-store', redirect: 'follow', signal: ctl ? ctl.signal : undefined }, init));
         const text = await res.text();
-        let json;
-        try { json = JSON.parse(text); } catch (e) {
-          throw new ApiError('Server membalas dengan format tidak dikenal. Pastikan URL Web App benar & sudah di-deploy untuk "Anyone".', 'FORMAT');
+        try { return JSON.parse(text); } catch (e) {
+          return { ok: false, network: true, retryable: res.status >= 500 || res.status === 429 || res.status === 0, code: 'FORMAT',
+            message: 'Server membalas dengan format tidak dikenal (HTTP ' + res.status + '). Pastikan URL Web App benar & akses "Siapa saja".' };
         }
-        return json;
       } catch (e) {
-        if (e instanceof ApiError) throw e;
         const aborted = e && e.name === 'AbortError';
-        throw new ApiError(aborted ? 'Koneksi terlalu lambat. Periksa sinyal internet lalu coba lagi.' : 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.', 'NET', true);
+        return { ok: false, network: true, retryable: true, code: 'NET',
+          message: aborted ? 'Server terlalu lama merespons. Periksa sinyal internet lalu coba lagi.' : 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.' };
       } finally { if (t) clearTimeout(t); }
     },
 
-    /** Kembalikan respons mentah {ok, data, message, code} */
+    /**
+     * Prinsip 8: baca → hingga 3× (25 dtk lalu 40 dtk) dengan jeda bertahap & menunggu online.
+     * Tulis → membawa reqId; diulang 1× bila jaringan putus (server mengembalikan hasil yang sama).
+     * Mengembalikan respons mentah {ok, data, message, code, ms}.
+     */
     async raw(action, data, opt) {
-      if (!this.configured()) throw new ApiError('URL server (API_URL) belum diatur di config.js.', 'CONFIG');
+      if (!this.configured()) return { ok: false, code: 'CONFIG', message: 'URL server (API_URL) belum diatur di config.js.' };
       opt = opt || {};
+      const read = App.isRead(action);
+      const reqId = read ? '' : (opt.reqId || App.reqId());
+      const tries = opt.tries || (read ? 3 : 2);
+      let url = this.url(), init;
       if (GET_ACTIONS[action] && !opt.token && !opt.post) {
-        let u = this.url() + (this.url().indexOf('?') >= 0 ? '&' : '?') + 'action=' + encodeURIComponent(action);
-        if (data) u += '&data=' + encodeURIComponent(JSON.stringify(data));
-        return this._fetch(u, { method: 'GET' }, opt.timeout);
+        url += (url.indexOf('?') >= 0 ? '&' : '?') + 'action=' + encodeURIComponent(action);
+        if (data) url += '&data=' + encodeURIComponent(JSON.stringify(data));
+        init = { method: 'GET' };
+      } else {
+        init = {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // text/plain → tanpa CORS preflight
+          body: JSON.stringify({ action: action, data: data || {}, token: opt.token || undefined, reqId: reqId || undefined }),
+        };
       }
-      return this._fetch(this.url(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain → tanpa CORS preflight
-        body: JSON.stringify({ action: action, data: data || {}, token: opt.token || undefined }),
-      }, opt.timeout || 45000);
+      const t0 = performance.now();
+      let r, i = 0;
+      for (; i < tries; i++) {
+        if (i) { await App.sleep(1200 * i); if (navigator.onLine === false) await waitOnline(15000); }
+        r = await this._once(url, init, opt.timeout || (read ? (i ? 40000 : 25000) : 90000));
+        if (r.ok || !r.retryable) break;
+      }
+      Perf.add(action, Math.round(performance.now() - t0), r && r.ms, i + 1);
+      return r;
     },
 
     /** Kembalikan `data`, atau lempar ApiError bila ok:false */
     async call(action, data, opt) {
       const r = await this.raw(action, data, opt);
-      if (!r || !r.ok) throw new ApiError((r && r.message) || 'Terjadi kesalahan di server.', r && r.code);
+      if (!r || !r.ok) throw new ApiError((r && r.message) || 'Terjadi kesalahan di server.', r && r.code, r && r.network);
       return r.data;
     },
 
-    async admin(action, data) {
-      const r = await this.raw(action, data, { token: App.auth.token(), post: true });
+    async admin(action, data, opt) {
+      const r = await this.raw(action, data, Object.assign({ token: App.auth.token(), post: true }, opt || {}));
       if (r && r.code === 'AUTH') { App.auth.expired(); throw new ApiError(r.message, 'AUTH'); }
-      if (!r || !r.ok) throw new ApiError((r && r.message) || 'Terjadi kesalahan di server.', r && r.code);
+      if (!r || !r.ok) throw new ApiError((r && r.message) || 'Terjadi kesalahan di server.', r && r.code, r && r.network);
       return r.data;
+    },
+
+    /** Prinsip 8: bangunkan server Apps Script lebih awal (tanpa menunggu hasil) */
+    warmUp() {
+      if (!this.configured()) return;
+      const u = this.url();
+      fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + 'action=ping&_=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
     },
   };
 
@@ -259,7 +311,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.1.0';
+  App.SERVER_MIN = '1.2.0';
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);
@@ -303,8 +355,39 @@
   App.path = () => (location.hash.replace(/^#/, '') || '/').split('?')[0];
   App.onLeave = fn => { cleanups.push(fn); };
   App.alive = id => id === App.viewId;
+  // ── Prinsip 9: kode admin (±28 KB gzip) hanya diunduh saat halaman admin dibuka ──
+  App.ASSET_V = (document.querySelector('script[src*="core.js"]') || { src: '' }).src.split('v=')[1] || '';
+  const ADMIN_JS = ['admin', 'hadir', 'musyawaroh', 'pengaturan'];
+  let adminP = null;
+  App.loadAdmin = function () {
+    if (App.admin) return Promise.resolve(true);
+    if (adminP) return adminP;
+    adminP = new Promise((res, rej) => {
+      let left = ADMIN_JS.length;
+      ADMIN_JS.forEach(n => {
+        const s = document.createElement('script');
+        s.src = 'assets/js/' + n + '.js' + (App.ASSET_V ? '?v=' + App.ASSET_V : '');
+        s.async = false;                                   // urutan eksekusi tetap
+        s.onload = () => { if (--left === 0) res(true); };
+        s.onerror = () => { adminP = null; rej(new Error('Gagal memuat modul admin. Periksa koneksi lalu coba lagi.')); };
+        document.head.appendChild(s);
+      });
+    });
+    return adminP;
+  };
+
   App.render = function () {
     const path = App.path();
+    if (path.indexOf('/admin') === 0 && !App.admin) {
+      const id0 = ++App.viewId;
+      const v = $('#view');
+      if (!v.querySelector('.adm')) v.innerHTML = '<div class="boot"><div class="boot-mark"></div><div class="boot-text">Membuka halaman admin…</div></div>';
+      App.loadAdmin().then(() => { if (App.viewId === id0) App.render(); }).catch(e => {
+        if (App.viewId !== id0) return;
+        v.innerHTML = '<div class="setup-screen stack"><div class="notice err">' + icon('cloudOff') + '<div>' + esc(e.message) + '</div></div><button class="btn btn-primary" onclick="App.render()">' + icon('refresh') + ' Coba Lagi</button><a class="btn btn-ghost" href="#/">Kembali ke Beranda</a></div>';
+      });
+      return;
+    }
     cleanups.forEach(fn => { try { fn(); } catch (e) { console.warn(e); } });
     cleanups = [];
     App.closeAllLayers();
@@ -572,7 +655,7 @@
     refresh(force) {
       if (!App.auth.valid()) return Promise.resolve(this.data);
       if (this.fetching) return this.fetching;
-      if (!force && this.data && Date.now() - this.lastFetch < 20000) return Promise.resolve(this.data);
+      if (!force && this.data && Date.now() - this.lastFetch < 60000) return Promise.resolve(this.data);
       const seq = this.mutSeq;
       this.fetching = App.api.admin('getAdminBundle').then(d => {
         this.lastFetch = Date.now();
@@ -606,7 +689,7 @@
       opt = opt || {};
       this.mutSeq++;
       if (apply && this.data) { apply(this.data); }
-      const job = { id: App.uuid(), action: action, data: payload, label: opt.label || '' };
+      const job = { id: App.uuid(), action: action, data: payload, label: opt.label || '' };   // job.id = reqId (idempoten)
       if (opt.onOk) this.callbacks[job.id] = opt.onOk;
       this.queue.push(job);
       this.persist();
@@ -624,15 +707,14 @@
       while (this.queue.length) {
         const job = this.queue[0];
         this.setSync('busy');
-        let r;
-        try {
-          r = await App.api.raw(job.action, job.data, { token: App.auth.token(), post: true });
-        } catch (e) {
+        // reqId = job.id → bila balasan hilang lalu dikirim ulang, server tidak menyimpan dua kali
+        const r = await App.api.raw(job.action, job.data, { token: App.auth.token(), post: true, reqId: job.id });
+        if (!r.ok && r.network) {
           // jaringan putus → tunggu & coba lagi, data lokal tetap aman
           this.setSync('offline');
           await App.sleep(backoff);
           backoff = Math.min(backoff * 2, 30000);
-          if (!navigator.onLine) { this.pumping = false; return; }
+          if (navigator.onLine === false) { this.pumping = false; return; }
           continue;
         }
         backoff = 1500;
