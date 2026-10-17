@@ -37,7 +37,7 @@
           '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.0 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.5 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
@@ -70,6 +70,7 @@
       window.scrollTo(0, 0);
       App.notulenEditor.pill();
       if (App.musyawaroh) App.musyawaroh.pill();
+      if (App.monFS) App.monFS.pill();
       return c;
     },
 
@@ -127,6 +128,7 @@
     const ok = await App.confirm({ title: 'Keluar dari admin?', message: Store.queue.length ? 'Masih ada ' + Store.queue.length + ' perubahan yang sedang dikirim. Tunggu sampai tersimpan sebelum keluar.' : 'Anda perlu masuk lagi untuk membuka halaman admin.', ok: 'Keluar', danger: true });
     if (!ok) return;
     if (App.musyawaroh) App.musyawaroh.exit();
+    if (App.monFS) App.monFS.exit();
     App.api.raw('logout', {}, { post: true }).catch(() => {});
     App.auth.clear();
     App.ls.del('mp_bundle');
@@ -291,9 +293,10 @@
     const el = c.querySelector('[data-mon]');
     const pasang = d => {
       if (!App.alive(vid)) return;
-      c._monDone = !!d.nama;
+      c._monDone = true;
       App.monView.mount(el, d, {
         admin: !!d.nama,
+        onFull: () => App.monFS.open(App.monitoringCache || d),
         onRefresh: async btn => {
           App.busy(btn, true);
           try { const n = await App.api.admin('segarkanMonitoring', {}); App.monitoringCache = n; App.swrBust('mon'); pasang(n); App.toast('Data monitoring diperbarui dari Google Sheets.'); }

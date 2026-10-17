@@ -390,6 +390,8 @@
   }
 
   // ───────────────────────── Sumber data Monitoring ─────────────────────────
+  const WA_BAWAAN = "Assalamu'alaikum Bpk/Ibu, berikut orang tua yang sudah mengisi monitoring {bulan} {tahun}:\n\n{data}\n\nMohon amal sholih, sekiranya yang belum mengisi dapat segera mengisi. Untuk yang sudah mengisi kami syukuri, Alhamdulillah Jazakumullohu Khoiro.";
+  const WA_BARIS = '{no}. {anak} — ortu: {pelapor}';
   function tabMonitoring(el) {
     const s = B.set();
     el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('heart') + ' Sumber Data Monitoring & Bimbingan Akhlaq</div>' +
@@ -397,7 +399,25 @@
       '<div class="field" style="margin-top:16px"><label>ID atau tautan Google Sheets</label><input class="input" data-id placeholder="Kosongkan untuk memakai spreadsheet bawaan" value="' + esc(s.monitoringId || '') + '"><div class="help">' + icon('info', 'sm') + 'Boleh menempel tautan lengkap (https://docs.google.com/spreadsheets/d/…/edit).</div></div>' +
       '<div class="field" style="margin-top:14px"><label>Nama tab (opsional)</label><input class="input" data-tab placeholder="Kosongkan = tab pertama" value="' + esc(s.monitoringTab || '') + '"></div>' +
       '<div class="row wrap" style="margin-top:16px;gap:8px"><button class="btn btn-primary" data-save>' + icon('save') + ' Simpan</button><button class="btn btn-soft" data-tes>' + icon('refresh') + ' Muat Ulang & Periksa Data</button><a class="btn btn-ghost" href="#/admin/monitoring">' + icon('chart') + ' Buka Dashboard</a></div>' +
-      '<div data-hasil style="margin-top:14px"></div></section>';
+      '<div data-hasil style="margin-top:14px"></div></section>' +
+      '<section class="card lg" style="margin-top:16px"><div class="card-title">' + icon('message') + ' Format Teks WhatsApp (Data Rinci)</div>' +
+      '<div class="card-sub">Dipakai tombol <b>Teks WA</b> di Dashboard Monitoring (umum & admin). Kosongkan untuk memakai format bawaan.</div>' +
+      '<div class="field" style="margin-top:16px"><label>Isi pesan</label><textarea class="input" data-wa rows="7" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px">' + esc(s.monitoringWa || WA_BAWAAN) + '</textarea>' +
+      '<div class="help">' + icon('info', 'sm') + 'Kode isian: <code>{bulan}</code> <code>{tahun}</code> <code>{data}</code> (daftar per kelompok) <code>{jumlah}</code> <code>{kelompok}</code> <code>{kategori}</code>. Huruf tebal WA: *teks*.</div></div>' +
+      '<div class="field" style="margin-top:14px"><label>Format tiap baris data</label><input class="input" data-wab value="' + esc(s.monitoringWaBaris || WA_BARIS) + '">' +
+      '<div class="help">' + icon('info', 'sm') + 'Kode isian: <code>{no}</code> <code>{anak}</code> <code>{pelapor}</code> <code>{kelompok}</code> <code>{kategori}</code> <code>{umur}</code> <code>{lp}</code> <code>{bulan}</code> <code>{tahun}</code>.</div></div>' +
+      '<div class="row wrap" style="margin-top:16px;gap:8px"><button class="btn btn-primary" data-wasave>' + icon('save') + ' Simpan Format</button><button class="btn btn-ghost" data-wareset>' + icon('refresh', 'sm') + ' Kembalikan bawaan</button></div></section>';
+    el.querySelector('[data-wareset]').onclick = () => { el.querySelector('[data-wa]').value = WA_BAWAAN; el.querySelector('[data-wab]').value = WA_BARIS; };
+    el.querySelector('[data-wasave]').onclick = () => {
+      let t = el.querySelector('[data-wa]').value.trim(), b = el.querySelector('[data-wab]').value.trim();
+      if (t && t.indexOf('{data}') < 0) { App.toast('Isi pesan harus memuat {data} sebagai tempat daftar nama.', 'warn'); return; }
+      if (t === WA_BAWAAN) t = '';
+      if (b === WA_BARIS) b = '';
+      Store.mutate('ubahPengaturan', { monitoring_wa: t, monitoring_wa_baris: b }, d => { d.pengaturan.monitoringWa = t; d.pengaturan.monitoringWaBaris = b; }, { label: 'Format teks WA' });
+      [App.monitoringCache, App.swrPeek('mon')].forEach(d => { if (d) d.wa = { template: t || WA_BAWAAN, baris: b || WA_BARIS }; });
+      App.swrBust('mon');
+      App.toast('Format teks WA disimpan.');
+    };
     const hasil = el.querySelector('[data-hasil]');
     const periksa = async btn => {
       App.busy(btn, true);

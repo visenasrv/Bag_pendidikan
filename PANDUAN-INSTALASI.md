@@ -13,8 +13,48 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ---
 
-## U. UPDATE KE v1.4.0 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.5.0 (untuk aplikasi yang sudah berjalan)
 
+v1.5.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah dengan `Kode.gs` v1.5.0 dan `musyawaroh-pelaporan-update-v1.5.0.zip`. Jika Anda masih di v1.3.x, langkah ini sudah mencakup semua isi v1.4.0.
+
+**Yang baru di v1.5.0**
+1. **Perbaikan:** tombol **Keluar** di menu samping admin tidak lagi terpotong di layar pendek atau saat tampilan diperbesar (zoom). Daftar menu kini bisa digulir.
+2. **Monitoring Akhlaq di admin** punya tombol **Layar penuh**:
+   - **Perkecil** (atau Esc) menyembunyikannya, lalu muncul tombol melayang **Monitoring Akhlaq** di halaman admin mana pun. Tombol ini tetap ada setelah halaman dimuat ulang.
+   - Tombol **×** menutup layar penuh sepenuhnya.
+3. **Data rinci monitoring** (nama anak, umur, L/P, kategori, pelapor) sekarang tampil **sama untuk umum dan admin**.
+4. **Beranda:** ikon Admin dipisah dari menu utama dan diganti **ikon gembok kecil** di pojok kanan atas.
+5. **Data rinci** bisa **diunduh PDF** atau disalin sebagai **teks WhatsApp**:
+   - teks WA bisa langsung disalin atau dibuka di WhatsApp;
+   - keduanya mengikuti filter dan pencarian yang aktif;
+   - format pesan WA diatur admin di **Pengaturan → Monitoring → Format Teks WhatsApp**.
+
+### Format teks WhatsApp
+Bawaan:
+```
+Assalamu'alaikum Bpk/Ibu, berikut orang tua yang sudah mengisi monitoring {bulan} {tahun}:
+
+{data}
+
+Mohon amal sholih, sekiranya yang belum mengisi dapat segera mengisi. Untuk yang sudah mengisi kami syukuri, Alhamdulillah Jazakumullohu Khoiro.
+```
+- `{data}` diganti daftar nama per kelompok (judul kelompok dicetak tebal). Setiap baris mengikuti **Format tiap baris**, bawaannya `{no}. {anak} — ortu: {pelapor}`.
+- Kode lain yang bisa dipakai: `{bulan} {tahun} {jumlah} {kelompok} {kategori}`. Untuk format baris: `{no} {anak} {pelapor} {kelompok} {kategori} {umur} {lp} {bulan} {tahun}`.
+- Satu anak hanya ditulis sekali walaupun mengisi beberapa bulan. **Pilih satu bulan di filter** agar pesannya tepat.
+
+### U1. Backend
+1. Ganti seluruh isi `Kode.gs` dengan **v1.5.0** → **Ctrl + S**.
+2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+
+### U2. Frontend
+1. Salin isi **`musyawaroh-pelaporan-update-v1.5.0.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
+2. `git add .` → `git commit -m "Update v1.5.0"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
+
+---
+
+## Riwayat update sebelumnya
+
+### v1.4.0 — Monitoring Akhlaq, warna & banner, beranda baru
 v1.4.0 mengubah **backend dan frontend**. Kerjakan **U1** dengan `Kode.gs` v1.4.0, lalu **U2** dengan `musyawaroh-pelaporan-update-v1.4.0.zip`.
 
 **Yang baru di v1.4.0**
@@ -27,22 +67,22 @@ v1.4.0 mengubah **backend dan frontend**. Kerjakan **U1** dengan `Kode.gs` v1.4.
    - kartu ringkasan, grafik tren per bulan, persentase bimbingan orang tua, dan 21 pertanyaan per kategori;
    - rekap per kelompok.
 
-   Versi umum **tidak menampilkan nama anak maupun pelapor**. Tabel data rinci bernama hanya ada di halaman admin.
+   Di v1.4.0 versi umum tidak menampilkan nama; **sejak v1.5.0 data rinci tampil untuk umum maupun admin**.
 5. **Beranda baru** bergaya menu aplikasi HP: ikon dengan tulisan di bawahnya. Status laporan juga dibuat lebih ringkas.
 
-### Sumber data Monitoring
+#### Sumber data Monitoring
 - Bawaan: spreadsheet `1SAsZ_9x3bc-TQP9rgdFTCpcs2n53dxST7OUO_RtK4R8`, tab pertama. Bisa diganti di **Pengaturan → Monitoring**, boleh dengan menempel tautan lengkap.
 - **Akun Google pemilik Apps Script harus bisa membuka spreadsheet itu** (minimal akses Lihat). Jika spreadsheet milik akun lain, bagikan ke akun tersebut.
 - Data dibaca langsung dari spreadsheet dan disimpan sementara selama 10 menit. Tombol **Muat ulang data** di dashboard admin, atau **Muat Ulang & Periksa Data** di Pengaturan, mengambil data terbaru saat itu juga.
 - Aplikasi hanya **membaca** spreadsheet itu dan tidak pernah mengubahnya.
 
-### U1. Backend (±3 menit)
+#### (v1.4.0) Backend
 1. Buka spreadsheet **DB Musyawaroh & Pelaporan Bagian Pendidikan** → **Ekstensi → Apps Script**.
 2. Ganti seluruh isi `Kode.gs` dengan **`Kode.gs` v1.4.0** → **Ctrl + S**.
 3. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.** (Jangan "Deployment baru".)
 4. Uji sumber data: login admin → **Pengaturan → Monitoring → Muat Ulang & Periksa Data**. Bila muncul *"Spreadsheet Monitoring tidak dapat dibuka"*, bagikan spreadsheet monitoring ke akun pemilik Apps Script.
 
-### U2. Frontend (±5 menit)
+#### (v1.4.0) Frontend
 1. Ekstrak **`musyawaroh-pelaporan-update-v1.4.0.zip`** (tanpa `config.js`, sehingga URL server Anda aman).
 2. Salin seluruh isinya ke folder repo Anda dan pilih **Ganti file di tujuan**. Ada berkas baru: `assets/js/monitoring.js`.
 3. Di PowerShell folder repo:
@@ -53,13 +93,10 @@ v1.4.0 mengubah **backend dan frontend**. Kerjakan **U1** dengan `Kode.gs` v1.4.
    ```
 4. Tunggu 1–2 menit → buka aplikasi → **Ctrl + Shift + R**.
 
-### U3. Cek hasil
+#### (v1.4.0) Cek hasil
 - Kotak kuning *"Server belum diperbarui … butuh 1.4.0"* → langkah U1-3 belum dilakukan.
-- Beranda menampilkan 6 ikon: Isi Laporan, Koreksi, Dashboard, Monitoring Akhlaq, Notulen, dan Admin.
+- Beranda menampilkan ikon menu utama. Sejak v1.5.0, Admin dibuka lewat ikon gembok kecil di pojok kanan atas.
 
----
-
-## Riwayat update sebelumnya
 
 ### v1.3.1 — Mode Musyawaroh bisa diperkecil + catat notulen
 **Tambahan v1.3.1 — Mode Musyawaroh**

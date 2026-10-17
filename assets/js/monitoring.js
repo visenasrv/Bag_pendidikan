@@ -2,8 +2,9 @@
    monitoring.js — Dashboard Monitoring & Bimbingan Akhlaq (v1.4)
    Sumber: jawaban Google Form monitoring orang tua generus (dibaca server,
    dipadatkan, lalu SEMUA perhitungan dilakukan di perangkat → filter instan).
-   Umum : angka & persentase saja (tanpa nama anak / pelapor).
-   Admin: + tabel data rinci dengan nama.
+   v1.5: data rinci (nama anak, pelapor) tampil untuk umum & admin, bisa diunduh
+   PDF atau disalin sebagai teks WhatsApp (format pesan diatur admin).
+   Admin: mode layar penuh yang bisa diperkecil (App.monFS).
    Fitur mengikuti PRD "Dashboard Bimbingan dan Monitoring Orang Tua Generus":
    filter kategori (satu) + tahun/bulan/kelompok (banyak), kartu ringkasan,
    tren antar bulan, persentase bimbingan orang tua, 21 pertanyaan per kategori.
@@ -60,6 +61,67 @@
     panel.onclick = e => e.stopPropagation();
   }
   document.addEventListener('click', () => document.querySelectorAll('.ms-panel').forEach(p => p.classList.add('hidden')));
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const buka = Array.from(document.querySelectorAll('.ms-panel')).filter(p => !p.classList.contains('hidden'));
+    if (buka.length) { buka.forEach(p => p.classList.add('hidden')); e.stopPropagation(); }
+  }, true);
+
+  // ───────────────────────── Data rinci → teks WhatsApp & PDF (v1.5) ─────────────────────────
+  /** keterangan filter aktif: {bulan, tahun, kelompok, kategori} dalam kata-kata */
+  function ringkasFilter(D, f, list) {
+    const uniq = a => a.filter((x, i) => a.indexOf(x) === i);
+    const bl = f.bulan.length ? f.bulan.slice().sort((a, b) => a - b) : uniq(list.map(r => r[2]).filter(Boolean)).sort((a, b) => a - b);
+    const th = f.tahun.length ? f.tahun.slice().sort() : uniq(list.map(r => r[1]).filter(Boolean)).sort();
+    return {
+      bulan: bl.length === 0 ? '' : bl.length <= 3 ? bl.map(b => BLN[b - 1]).join(', ') : (f.bulan.length ? bl.length + ' bulan' : 'semua bulan'),
+      tahun: th.join(', '),
+      kelompok: f.kel.length ? f.kel.map(k => D.kelompok[k]).join(', ') : 'semua kelompok',
+      kategori: f.kat >= 0 ? D.kat[f.kat] : 'semua kategori',
+    };
+  }
+  /** satu anak sekali saja (laporan terbaru), urut kelompok lalu nama */
+  function unikAnak(D, list) {
+    const m = {};
+    list.forEach(r => { const o = m[r[5]]; if (!o || r[1] * 100 + r[2] > o[1] * 100 + o[2]) m[r[5]] = r; });
+    return Object.keys(m).map(k => m[k]).sort((a, b) => D.kelompok[a[3]].localeCompare(D.kelompok[b[3]]) || String(D.nama[a[5]]).localeCompare(String(D.nama[b[5]])));
+  }
+  App.monUnikAnak = unikAnak;
+  function waTeks(D, list, f) {
+    const rf = ringkasFilter(D, f, list);
+    const tpl = (D.wa && D.wa.template) || "Assalamu'alaikum Bpk/Ibu, berikut orang tua yang sudah mengisi monitoring {bulan} {tahun}:\n\n{data}\n\nMohon amal sholih, sekiranya yang belum mengisi dapat segera mengisi. Untuk yang sudah mengisi kami syukuri, Alhamdulillah Jazakumullohu Khoiro.";
+    const baris = (D.wa && D.wa.baris) || '{no}. {anak} — ortu: {pelapor}';
+    const anak = unikAnak(D, list);
+    const grup = {};
+    anak.forEach(r => { (grup[r[3]] = grup[r[3]] || []).push(r); });
+    const ganti = (fmt, val) => fmt.replace(/\{(\w+)\}/g, (m, k) => (val[k] !== undefined ? val[k] : m));
+    const nilai = (r, no) => ({
+      no: no, anak: D.nama[r[5]] || '', pelapor: r[11] || '-', kelompok: D.kelompok[r[3]], kategori: D.kat[r[0]],
+      umur: r[10] || '', lp: r[4] === 1 ? 'L' : r[4] === 2 ? 'P' : '', bulan: r[2] ? BLN[r[2] - 1] : '', tahun: r[1] || '',
+    });
+    const data = Object.keys(grup).sort((a, b) => D.kelompok[a].localeCompare(D.kelompok[b]))
+      .map(k => '*' + D.kelompok[k] + '* (' + grup[k].length + ')\n' + grup[k].map((r, i) => ganti(baris, nilai(r, i + 1))).join('\n')).join('\n\n');
+    return ganti(tpl, { bulan: rf.bulan, tahun: rf.tahun, data: data || '(belum ada data)', jumlah: String(anak.length), kelompok: rf.kelompok, kategori: rf.kategori })
+      .replace(/[ \t]+\n/g, '\n').replace(/ {2,}/g, ' ');
+  }
+  App.monWaTeks = waTeks;
+  function bukaWa(D, list, f) {
+    const teks = waTeks(D, list, f);
+    const m = App.modal({
+      title: 'Teks WhatsApp — Data Rinci', wide: true,
+      body: '<p class="muted" style="font-size:13px">Mengikuti filter & pencarian yang aktif · ' + App.fmtNum(unikAnak(D, list).length) + ' anak. Teks bisa diubah sebelum disalin.' + (f.bulan.length === 1 ? '' : ' <b>Tips:</b> pilih satu bulan di filter agar pesannya lebih tepat.') + '</p>' +
+        '<textarea class="input wa-teks" data-t rows="14">' + esc(teks) + '</textarea>',
+      foot: '<button class="btn btn-soft" data-x>Tutup</button><a class="btn btn-wa" data-kirim target="_blank" rel="noopener">' + icon('send') + ' Buka WhatsApp</a><button class="btn btn-primary" data-salin>' + icon('copy') + ' Salin Teks</button>',
+    });
+    const ta = m.el.querySelector('[data-t]');
+    const link = () => { m.el.querySelector('[data-kirim]').href = 'https://wa.me/?text=' + encodeURIComponent(ta.value); };
+    link(); ta.oninput = link;
+    m.el.querySelector('[data-salin]').onclick = async () => {
+      try { await navigator.clipboard.writeText(ta.value); }
+      catch (e) { ta.focus(); ta.select(); document.execCommand('copy'); }
+      App.toast('Teks disalin. Tempel di grup WhatsApp.');
+    };
+  }
 
   // ───────────────────────── Tampilan dashboard ─────────────────────────
   App.monView = {
@@ -87,8 +149,9 @@
         '<section class="mon-head"><div class="grow"><div class="kick">' + icon('heart', 'sm') + ' Monitoring Bulanan</div><h1>Dashboard Monitoring &amp; Bimbingan Akhlaq</h1>' +
         '<p>Bimbingan dan monitoring orang tua generus · ' + App.fmtNum(D.rows.length) + ' laporan terekam · ' + esc(App.fmtTanggal(App.today())) + '</p>' +
         '<div class="row wrap" style="gap:6px;margin-top:10px"><span class="badge ok">' + icon('cloudCheck', 'sm') + ' Data dari Google Sheets · diperbarui ' + esc(App.fmtWaktu(D.dibuat, { noYear: true })) + '</span>' +
-        (opt.admin ? '' : '<span class="badge">' + icon('shield', 'sm') + ' Tanpa nama anak</span>') + '</div></div>' +
-        '<div class="mon-org"><b>PPG Kutai Timur</b><small>' + now.y + '</small>' + (opt.onRefresh ? '<button class="btn btn-soft btn-sm" data-refresh style="margin-top:8px">' + icon('refresh', 'sm') + ' Muat ulang data</button>' : '') + '</div></section>' +
+        '</div></div>' +
+        '<div class="mon-org"><b>PPG Kutai Timur</b><small>' + now.y + '</small>' + (opt.onRefresh ? '<button class="btn btn-soft btn-sm" data-refresh style="margin-top:8px">' + icon('refresh', 'sm') + ' Muat ulang data</button>' : '') +
+        (opt.onFull ? '<button class="btn btn-soft btn-sm" data-full style="margin-top:6px">' + icon('maximize', 'sm') + ' Layar penuh</button>' : '') + '</div></section>' +
         '<section class="card mon-filter"><div class="chips mon-kat" data-kat></div>' +
         '<div class="mon-ms"><div data-ms="tahun"></div><div data-ms="bulan"></div><div data-ms="kel"></div><button class="btn btn-ghost btn-sm" data-reset>' + icon('refresh', 'sm') + ' Reset filter</button></div></section>' +
         '<div data-isi></div>';
@@ -110,6 +173,8 @@
       el.querySelector('[data-reset]').onclick = () => { f.kat = -1; f.tahun.length = 0; f.bulan.length = 0; f.kel.length = 0; simpanF(); gambarKat(); ms(); hitung(); };
       const rb = el.querySelector('[data-refresh]');
       if (rb) rb.onclick = () => opt.onRefresh(rb);
+      const fb = el.querySelector('[data-full]');
+      if (fb) fb.onclick = () => opt.onFull();
 
       const lolos = (r, abaikanBulan) => (f.kat < 0 || r[0] === f.kat) && (!f.tahun.length || f.tahun.indexOf(r[1]) >= 0) &&
         (abaikanBulan || !f.bulan.length || f.bulan.indexOf(r[2]) >= 0) && (!f.kel.length || f.kel.indexOf(r[3]) >= 0);
@@ -161,10 +226,11 @@
             kelRows.map(k => '<tr><td><b>' + esc(k.nama) + '</b></td><td class="r num">' + App.fmtNum(k.n) + '</td><td class="r num">' + App.fmtNum(k.anak.size) + '</td>' +
               k.s.map((s, i) => { const p = pct(s, k.t[i]); return '<td class="r num"><span class="pctc" style="--p:' + p + '%">' + (k.t[i] ? p + '%' : '—') + '</span></td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>' : '<div class="empty">Tidak ada data</div>') + '</section>' +
 
-          (opt.admin && D.nama ? '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px;flex-wrap:wrap"><div><div class="card-title">' + icon('file') + ' Data Rinci</div><div class="card-sub" data-rinci-n></div></div>' +
-            '<div class="input-wrap" style="min-width:220px"><input class="input" data-cari placeholder="Cari nama anak / pelapor…" value="' + esc(cari) + '" style="min-height:40px;padding-left:38px"><span style="position:absolute;left:11px;top:10px;color:var(--muted)">' + icon('search', 'sm') + '</span></div></div><div data-rinci></div></section>' : '');
+          (D.nama ? '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px;flex-wrap:wrap;gap:10px"><div><div class="card-title">' + icon('file') + ' Data Rinci</div><div class="card-sub" data-rinci-n></div></div>' +
+            '<div class="rinci-act"><div class="input-wrap" style="min-width:200px;flex:1"><input class="input" data-cari placeholder="Cari nama anak / pelapor…" value="' + esc(cari) + '" style="min-height:40px;padding-left:38px"><span style="position:absolute;left:11px;top:10px;color:var(--muted)">' + icon('search', 'sm') + '</span></div>' +
+            '<button class="btn btn-soft btn-sm" data-pdfr>' + icon('download', 'sm') + ' Unduh PDF</button><button class="btn btn-wa btn-sm" data-wa>' + icon('message', 'sm') + ' Teks WA</button></div></div><div data-rinci></div></section>' : '');
 
-        if (opt.admin && D.nama) rinci(rows);
+        if (D.nama) rinci(rows);
         grafik();
       };
 
@@ -196,6 +262,8 @@
         if (mb) mb.onclick = () => { tabelBatas += 300; rinci(rows); };
         const ci = isi.querySelector('[data-cari]');
         ci.oninput = App.debounce(() => { cari = ci.value; tabelBatas = 200; rinci(rows); }, 200);
+        isi.querySelector('[data-wa]').onclick = () => bukaWa(D, list, f);
+        isi.querySelector('[data-pdfr]').onclick = e => App.pdf.run(e.currentTarget, () => App.pdf.monitoringRinci(D, list, ringkasFilter(D, f, list), cari));
       };
 
       const grafik = async () => {
@@ -246,6 +314,99 @@
       gambarKat(); ms(); hitung();
     },
   };
+
+  // ───────────────────────── Layar penuh admin (bisa diperkecil) — v1.5 ─────────────────────────
+  const FSKEY = 'mp_monfs';
+  let FS = null;
+  App.monFS = {
+    /** pil melayang "Monitoring Akhlaq" saat layar penuh diperkecil (hanya di halaman admin) */
+    pill() {
+      let p = document.getElementById('mpill');
+      const st = App.ls.get(FSKEY);
+      const show = st && st.min && App.auth.valid() && App.path().indexOf('/admin') === 0;
+      if (!show) { if (p) p.remove(); return; }
+      if (!p) {
+        p = document.createElement('div');
+        p.id = 'mpill';
+        p.className = 'pill-float present-pill mon-pill';
+        p.innerHTML = '<button class="pp-open" data-open>' + icon('heart') + '<span><b>Monitoring Akhlaq</b><small>Layar penuh diperkecil</small></span>' + icon('maximize', 'sm') + '</button><button class="pp-x" data-x title="Tutup layar penuh" aria-label="Tutup layar penuh">' + icon('x', 'sm') + '</button>';
+        p.querySelector('[data-open]').onclick = () => App.monFS.open();
+        p.querySelector('[data-x]').onclick = () => App.monFS.exit();
+        document.body.appendChild(p);
+      }
+    },
+    async open(D) {
+      if (FS) { FS.restore(); return; }
+      D = D || App.monitoringCache || App.swrPeek('mon');
+      if (!D) {
+        try { D = await App.api.admin('getMonitoringAdmin', {}); App.monitoringCache = D; } catch (e) { App.toast(e.message, 'err'); return; }
+      }
+      buatFS(D);
+    },
+    exit() { if (FS) FS.exit(); else { App.ls.del(FSKEY); App.monFS.pill(); } },
+  };
+  window.addEventListener('hashchange', () => App.monFS.pill());
+
+  function buatFS(D) {
+    const el = App.html('<div class="mon-fs" tabindex="-1"><div class="mf-top">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') +
+      '<div class="ttl"><b>Monitoring &amp; Bimbingan Akhlaq</b><small>Mode layar penuh</small></div>' +
+      '<button class="btn" data-min title="Perkecil (Esc)">' + icon('minimize') + '<span class="hide-s"> Perkecil</span></button>' +
+      '<button class="btn mf-x" data-exit title="Tutup layar penuh" aria-label="Tutup layar penuh">' + icon('x') + '</button></div>' +
+      '<div class="mf-body"><div class="mf-in" data-in></div></div></div>');
+    document.body.appendChild(el);
+    let min = false, closed = false;
+    const isi = el.querySelector('[data-in]');
+    const gambar = d => App.monView.mount(isi, d, {
+      admin: true,
+      onRefresh: async btn => {
+        App.busy(btn, true);
+        try { const n = await App.api.admin('segarkanMonitoring', {}); App.monitoringCache = n; App.swrBust('mon'); gambar(n); App.toast('Data monitoring diperbarui.'); }
+        catch (e) { App.toast(e.message, 'err'); App.busy(btn, false); }
+      },
+    });
+    const layarPenuh = () => { const d = document.documentElement; if (d.requestFullscreen && !document.fullscreenElement) d.requestFullscreen().catch(() => {}); };
+    const keluarLP = () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('.backdrop')) return;   // dialog (mis. teks WA) ditutup dulu
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) { t.blur(); return; }
+      e.preventDefault(); minimize();
+    };
+    const onFs = () => { if (!document.fullscreenElement && !min && !closed) minimize(); };
+    const pasang = () => { document.addEventListener('keydown', onKey, true); document.addEventListener('fullscreenchange', onFs); document.body.style.overflow = 'hidden'; document.body.classList.add('presenting'); };
+    const lepas = () => { document.removeEventListener('keydown', onKey, true); document.removeEventListener('fullscreenchange', onFs); document.body.style.overflow = ''; document.body.classList.remove('presenting'); };
+    const minimize = () => {
+      if (min || closed) return;
+      min = true; lepas(); el.style.display = 'none'; keluarLP();
+      App.ls.set(FSKEY, { min: true });
+      App.monFS.pill();
+      App.toast('Layar penuh diperkecil. Ketuk tombol "Monitoring Akhlaq" di pojok untuk membuka lagi.', 'info');
+    };
+    const restore = () => {
+      if (closed) return;
+      min = false; el.style.display = ''; pasang(); layarPenuh();
+      App.ls.set(FSKEY, { min: false });
+      if (App.monitoringCache) D = App.monitoringCache;
+      gambar(D);   // gambar ulang: grafik dilepas saat pindah halaman selama diperkecil
+      App.monFS.pill(); el.focus({ preventScroll: true });
+    };
+    const exit = () => {
+      if (closed) return;
+      closed = true; lepas(); el.remove(); keluarLP(); FS = null;
+      App.ls.del(FSKEY); App.monFS.pill();
+    };
+    el.querySelector('[data-min]').onclick = minimize;
+    el.querySelector('[data-exit]').onclick = exit;
+    FS = { restore: restore, minimize: minimize, exit: exit };
+    pasang(); layarPenuh();
+    App.ls.set(FSKEY, { min: false });
+    gambar(D);
+    App.monFS.pill();
+    el.focus({ preventScroll: true });
+    // lengkapi data admin di latar bila yang dipakai baru data umum
+    if (!App.monitoringCache) App.api.admin('getMonitoringAdmin', {}).then(n => { App.monitoringCache = n; if (!closed) { D = n; gambar(n); } }).catch(() => {});
+  }
 
   // ───────────────────────── Halaman umum ─────────────────────────
   App.route('/monitoring', function (p, vid) {

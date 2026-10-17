@@ -557,6 +557,57 @@
     w.save('Notulen ' + (sessions.length === 1 ? App.fmtTanggal(sessions[0].tanggal) : sessions.length + ' sesi'));
   };
 
+  /** v1.5: data rinci Monitoring & Bimbingan Akhlaq (mengikuti filter & pencarian di layar) */
+  App.pdf.monitoringRinci = async function (D, list, rf, cari) {
+    const w = new Writer(await jsPDFCtor());
+    w.kop();
+    w.title('DATA RINCI MONITORING & BIMBINGAN AKHLAQ', 'Bulan: ' + (rf.bulan || '-') + ' · Tahun: ' + (rf.tahun || '-'));
+    w.infoGrid([['Kategori', rf.kategori], ['Kelompok', rf.kelompok], ['Jumlah', App.fmtNum(list.length) + ' laporan · ' + App.fmtNum(App.monUnikAnak(D, list).length) + ' anak']].concat(cari ? [['Pencarian', cari]] : []));
+    const d = w.doc, M = w.M;
+    const BL = App.BULAN_PENDEK;
+    const cols = [['No', 9], ['Bulan', 17], ['Nama Anak', 50], ['Umur', 11], ['L/P', 9], ['Kategori', 20], ['Pelapor', 0]];
+    const lebar = w.W - 2 * M;
+    cols[6][1] = lebar - cols.slice(0, 6).reduce((a, c) => a + c[1], 0);
+    const kepala = () => {
+      w.ensure(9);
+      w.fill(C.deep); d.rect(M, w.y, lebar, 7, 'F');
+      d.setTextColor(255, 255, 255); w.font('bold', 8.2);
+      let x = M + 1.5; cols.forEach(c => { d.text(c[0].toUpperCase(), x, w.y + 4.8); x += c[1]; });
+      w.y += 7;
+    };
+    const grup = {};
+    list.forEach(r => { (grup[r[3]] = grup[r[3]] || []).push(r); });
+    const kunci = Object.keys(grup).sort((a, b) => D.kelompok[a].localeCompare(D.kelompok[b]));
+    if (!kunci.length) w.para('Tidak ada data untuk filter ini.', 10, C.muted);
+    kunci.forEach(k => {
+      const rows = grup[k].sort((a, b) => (a[1] * 100 + a[2]) - (b[1] * 100 + b[2]) || String(D.nama[a[5]]).localeCompare(String(D.nama[b[5]])));
+      w.ensure(22);
+      w.y += 2;
+      w.fill(C.tint); d.roundedRect(M, w.y, lebar, 8, 1.5, 1.5, 'F');
+      w.color(C.deep); w.font('bold', 10.5); d.text(D.kelompok[k], M + 3, w.y + 5.5);
+      w.font('normal', 9); d.text(rows.length + ' laporan', w.W - M - 3, w.y + 5.5, { align: 'right' });
+      w.y += 10;
+      kepala();
+      rows.forEach((r, i) => {
+        if (w.y + 6.2 > w.H - 18) { w.newPage(); kepala(); }
+        if (i % 2) { w.fill([247, 250, 249]); d.rect(M, w.y, lebar, 6.2, 'F'); }
+        w.font('normal', 8.6); w.color(C.text);
+        const val = [String(i + 1), r[2] ? BL[r[2] - 1] + ' ' + String(r[1]).slice(2) : '-', D.nama[r[5]] || '', String(r[10] || ''), r[4] === 1 ? 'L' : r[4] === 2 ? 'P' : '-', D.kat[r[0]], String(r[11] || '')];
+        let x = M + 1.5;
+        cols.forEach((c, j) => {
+          if (j === 2) w.font('bold', 8.6); else w.font('normal', 8.6);
+          let t = val[j];
+          while (t.length > 1 && d.getTextWidth(t) > c[1] - 2.5) t = t.slice(0, -2) + '…';
+          d.text(t, x, w.y + 4.3);
+          x += c[1];
+        });
+        w.y += 6.2;
+        w.draw(C.line); d.setLineWidth(0.15); d.line(M, w.y, M + lebar, w.y);
+      });
+    });
+    w.save('Data Rinci Monitoring ' + (rf.bulan || '') + ' ' + (rf.tahun || ''));
+  };
+
   /** Jalankan pembuat PDF dengan indikator di tombol */
   App.pdf.run = async function (btn, fn) {
     App.busy(btn, true);
