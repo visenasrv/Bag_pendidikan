@@ -12,6 +12,7 @@
   const NAV = [
     { k: 'dashboard', t: 'Dashboard', i: 'grid', p: '/admin/dashboard' },
     { k: 'laporan', t: 'Kelola Laporan', i: 'file', p: '/admin/laporan' },
+    { k: 'monitoring', t: 'Monitoring Akhlaq', i: 'heart', p: '/admin/monitoring' },
     { k: 'musyawaroh', t: 'Mode Musyawaroh', i: 'present', p: '/admin/musyawaroh' },
     { k: 'notulen', t: 'Notulen', i: 'list', p: '/admin/notulen' },
     { k: 'hadir', t: 'Daftar Hadir', i: 'userCheck', p: '/admin/hadir' },
@@ -210,7 +211,7 @@
         if (!App.ls.get('mp_seen_laporan')) App.ls.set('mp_seen_laporan', Date.now());
         if (r.bundle) {
           // Prinsip 3: data admin ikut dalam balasan login → langsung tampil tanpa panggilan kedua
-          Store.data = r.bundle; Store.lastFetch = Date.now(); Store.persist(); App.cekVersi(r.bundle.versi);
+          Store.data = r.bundle; Store.lastFetch = Date.now(); Store.persist(); App.cekVersi(r.bundle.versi); if (r.bundle.pengaturan) App.brand.apply(r.bundle.pengaturan.warna || '');
         } else {
           await Store.refresh(true).catch(() => {});   // server versi lama
         }
@@ -280,6 +281,38 @@
     App.swrBust('dash_' + per.tahun);
   }
   A.toggleKunci = toggleKunci;
+
+  // ───────────────────────── MONITORING & BIMBINGAN AKHLAQ (v1.4) ─────────────────────────
+  // Versi admin = versi umum + tabel data rinci (nama anak & pelapor). Data admin hanya disimpan di memori.
+  App.route('/admin/monitoring', page('monitoring', 'Monitoring Akhlaq', function (c, p, vid) {
+    c._manual = true;   // tidak bergantung data bundle → jangan gambar ulang saat sinkron
+    if (c.querySelector('[data-mon]') && c._monDone) return;
+    c.innerHTML = '<div data-mon><div class="skeleton" style="height:120px"></div><div class="skeleton" style="height:80px;margin-top:12px"></div><div class="skeleton" style="height:260px;margin-top:12px"></div></div>';
+    const el = c.querySelector('[data-mon]');
+    const pasang = d => {
+      if (!App.alive(vid)) return;
+      c._monDone = !!d.nama;
+      App.monView.mount(el, d, {
+        admin: !!d.nama,
+        onRefresh: async btn => {
+          App.busy(btn, true);
+          try { const n = await App.api.admin('segarkanMonitoring', {}); App.monitoringCache = n; App.swrBust('mon'); pasang(n); App.toast('Data monitoring diperbarui dari Google Sheets.'); }
+          catch (e) { App.toast(e.message, 'err'); App.busy(btn, false); }
+        },
+      });
+    };
+    if (App.monitoringCache) { pasang(App.monitoringCache); return; }
+    const umum = App.swrPeek('mon');
+    if (umum) pasang(umum);   // tampil seketika dari data umum, lalu dilengkapi data admin
+    App.api.admin('getMonitoringAdmin', {}).then(d => { App.monitoringCache = d; pasang(d); }).catch(e => {
+      if (!App.alive(vid)) return;
+      if (umum) { App.toast('Tabel data rinci belum bisa dimuat: ' + e.message, 'warn'); return; }
+      el.innerHTML = '<div class="card"><div class="notice err">' + icon('cloudOff') + '<div class="grow"><b>Data monitoring belum bisa dimuat</b>' + esc(e.message) + '</div></div>' +
+        '<div class="row wrap" style="gap:8px;margin-top:12px"><button class="btn btn-outline" data-retry>' + icon('refresh') + ' Coba Lagi</button><a class="btn btn-ghost" href="#/admin/pengaturan" data-set>' + icon('settings') + ' Atur sumber data</a></div></div>';
+      el.querySelector('[data-retry]').onclick = () => App.render();
+      el.querySelector('[data-set]').onclick = () => App.ls.set('mp_set_tab', 'monitoring');
+    });
+  }));
 
   // ───────────────────────── Tabel laporan ─────────────────────────
   function laporanTable(rows, opt) {

@@ -8,7 +8,11 @@
   'use strict';
   const App = window.App;
   const esc = App.esc, icon = App.icon;
-  const WARNA = { caberawit: '#064E3B', praremaja: '#059669', remaja: '#6EE7B7', pranikah: '#F2C94C' };
+  /** warna grafik mengikuti warna utama aplikasi (v1.4) */
+  const warna = () => {
+    const v = n => App.brand.hex(n);
+    return { caberawit: v('--b-deep') || '#064E3B', praremaja: v('--b-mid2') || '#059669', remaja: v('--b-soft') || '#6EE7B7', pranikah: '#F2C94C', garis: v('--b-mid') || '#047857' };
+  };
   const NOL = () => ({ caberawit: 0, praremaja: 0, remaja: 0, pranikah: 0, total: 0, mondok: 0, mubaligh: 0, mudamudi: 0 });
   const jumlah = list => list.reduce((r, x) => { Object.keys(r).forEach(k => { r[k] += App.num(x.rekap && x.rekap[k]); }); return r; }, NOL());
 
@@ -117,6 +121,7 @@
     destroy(c);
     const Chart = window.Chart;
     const dark = App.theme.isDark();
+    const WARNA = warna();
     const grid = dark ? 'rgba(255,255,255,.08)' : 'rgba(6,78,59,.08)';
     Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
     Chart.defaults.color = dark ? '#9DB3AA' : '#5B6B65';
@@ -166,8 +171,8 @@
       type: 'line',
       data: {
         labels: App.BULAN_PENDEK,
-        datasets: [line('Total Generus', 'total', dark ? '#34D399' : '#047857', true), line('Caberawit', 'caberawit', dark ? '#A7F3D0' : '#064E3B'), line('Praremaja', 'praremaja', '#10B981'),
-          line('Remaja', 'remaja', '#6EE7B7'), line('Pranikah', 'pranikah', '#E0B43C'), line('Muda-Mudi', 'mudamudi', dark ? '#93C5FD' : '#2563EB', false, true)],
+        datasets: [line('Total Generus', 'total', dark ? App.brand.hex('--link') : WARNA.garis, true), line('Caberawit', 'caberawit', dark ? '#A7F3D0' : WARNA.caberawit), line('Praremaja', 'praremaja', WARNA.praremaja),
+          line('Remaja', 'remaja', WARNA.remaja), line('Pranikah', 'pranikah', '#E0B43C'), line('Muda-Mudi', 'mudamudi', dark ? '#93C5FD' : '#2563EB', false, true)],
       },
       options: {
         responsive: true, maintainAspectRatio: false, animation: { duration: 250 },

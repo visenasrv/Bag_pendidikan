@@ -187,7 +187,7 @@
   }
   App.ApiError = ApiError;
 
-  const GET_ACTIONS = { ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1 };
+  const GET_ACTIONS = { ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1, getMonitoring: 1 };
 
   // ── Prinsip 0: pengukur. Ketik Perf.table() di Console browser untuk melihat 30 panggilan terakhir ──
   const Perf = (window.Perf = {
@@ -201,7 +201,7 @@
 
   /** Aksi baca: aman diulang otomatis. Aksi lain = tulis → membawa reqId (aman diulang tanpa data ganda). */
   const READ_ACTIONS = {
-    ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1,
+    ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1, getMonitoring: 1, getMonitoringAdmin: 1, segarkanMonitoring: 1,
     bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1,
   };
   App.isRead = a => !!READ_ACTIONS[a];
@@ -315,7 +315,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.3.0';
+  App.SERVER_MIN = '1.4.0';
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);
@@ -336,8 +336,17 @@
   // Data publik bersama
   App.data = {
     config(onData) {
-      return App.swr('cfg', () => App.api.call('getConfig'), d => { App.cekVersi(d && d.versi); if (onData) onData(d); }, 60000);
+      return App.swr('cfg', () => App.api.call('getConfig'), d => {
+        App.cekVersi(d && d.versi);
+        if (d) {
+          // v1.4: warna utama & banner/logo mengikuti pengaturan admin di semua perangkat
+          if (d.warna !== undefined && String(d.warna || '').toUpperCase() !== App.brand.current()) App.brand.apply(d.warna);
+          App.logo.sync({ kiri: d.logoKiri, banner: d.banner });
+        }
+        if (onData) onData(d);
+      }, 60000);
     },
+    monitoring(onData) { return App.swr('mon', () => App.api.call('getMonitoring'), onData, 300000); },
     dash(tahun, onData) { return App.swr('dash_' + tahun, () => App.api.call('getDashboardPublik', { tahun: tahun }), onData, 20000); },
     notulen(onData) { return App.swr('notulen', () => App.api.call('getNotulenList'), onData, 20000); },
   };
@@ -547,8 +556,7 @@
     apply() {
       const dark = this.mode() === 'dark';
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-      const meta = document.querySelector('meta[name=theme-color]');
-      if (meta) meta.content = dark ? '#06382B' : '#064E3B';
+      this.meta();
       document.dispatchEvent(new CustomEvent('themechange'));
     },
     /** Terang ⇄ Gelap (v1.3: tanpa "ikuti perangkat") */
@@ -558,6 +566,68 @@
       App.toast('Tema: ' + (next === 'dark' ? 'Gelap' : 'Terang'), 'info', { ms: 1200 });
     },
     isDark() { return document.documentElement.getAttribute('data-theme') === 'dark'; },
+    meta() {
+      const m = document.querySelector('meta[name=theme-color]');
+      if (m) m.content = (getComputedStyle(document.documentElement).getPropertyValue(this.isDark() ? '--primary-deep' : '--b-deep').trim()) || '#064E3B';
+    },
+  };
+
+  // ───────────────────────── Warna utama (diatur admin, v1.4) ─────────────────────────
+  // Satu warna pilihan → seluruh palet terang & gelap dibentuk otomatis (campuran dengan putih/hitam).
+  const hx = h => { const m = String(h || '').replace('#', '').match(/^([0-9a-f]{6})$/i); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const toHex = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase();
+  const mix = (a, b, t) => a.map((v, i) => v * (1 - t) + b[i] * t);   // t = porsi warna b
+  App.brand = {
+    BAWAAN: '#047857',
+    PRESET: [['Zamrud', '#047857'], ['Toska', '#0F766E'], ['Biru Laut', '#1D4ED8'], ['Nila', '#4338CA'], ['Ungu', '#7E22CE'], ['Merah Marun', '#9F1239'], ['Cokelat', '#92400E'], ['Arang', '#374151']],
+    current() { try { return localStorage.getItem('mp_warna') || ''; } catch (e) { return ''; } },
+    isBawaan(h) { return !h || String(h).toUpperCase() === this.BAWAAN; },
+    /** palet lengkap dari satu warna */
+    palet(h) {
+      const c = hx(h) || hx(this.BAWAAN);
+      const W = [255, 255, 255], K = [0, 0, 0];
+      const deep = mix(c, K, 0.32);
+      return {
+        rgb: { deep: deep.map(Math.round), mid: c, tint: mix(c, W, 0.9).map(Math.round) },
+        brand: { '--b-deep': toHex(deep), '--b-mid': toHex(c), '--b-mid2': toHex(mix(c, W, 0.12)), '--b-press': toHex(mix(c, K, 0.16)), '--b-light': toHex(mix(c, K, 0.1)), '--b-dark': toHex(mix(c, K, 0.45)), '--b-soft': toHex(mix(c, W, 0.5)), '--b-rgb': deep.map(Math.round).join(', ') },
+        light: {
+          '--primary': toHex(c), '--primary-press': toHex(mix(c, K, 0.16)), '--primary-deep': toHex(deep), '--link': toHex(c),
+          '--tint': toHex(mix(c, W, 0.92)), '--tint-2': toHex(mix(c, W, 0.82)),
+          '--bg': toHex(mix(c, W, 0.95)), '--surface-2': toHex(mix(c, W, 0.965)), '--surface-3': toHex(mix(c, W, 0.91)),
+          '--border': toHex(mix(c, hx('#E4E7E6'), 0.93)), '--border-strong': toHex(mix(c, hx('#CFD5D2'), 0.9)),
+          '--text': toHex(mix(c, hx('#0F1413'), 0.9)), '--muted': toHex(mix(c, hx('#5F6664'), 0.9)), '--faint': toHex(mix(c, hx('#8E9592'), 0.9)),
+          '--ring': '0 0 0 3px rgba(' + c.join(', ') + ', .16)',
+        },
+        dark: {
+          '--primary': toHex(mix(c, W, 0.1)), '--primary-press': toHex(c), '--primary-deep': toHex(mix(c, K, 0.55)), '--link': toHex(mix(c, W, 0.55)),
+          '--tint': toHex(mix(c, hx('#0B0F0E'), 0.78)), '--tint-2': toHex(mix(c, hx('#0B0F0E'), 0.7)),
+          '--bg': toHex(mix(c, hx('#0A0D0C'), 0.92)), '--surface': toHex(mix(c, hx('#111615'), 0.88)), '--surface-2': toHex(mix(c, hx('#151A19'), 0.86)), '--surface-3': toHex(mix(c, hx('#1A201E'), 0.84)),
+          '--border': toHex(mix(c, hx('#232726'), 0.85)), '--border-strong': toHex(mix(c, hx('#303533'), 0.82)),
+          '--text': toHex(mix(c, hx('#EEF2F0'), 0.9)), '--muted': toHex(mix(c, hx('#A5ABA9'), 0.86)), '--faint': toHex(mix(c, hx('#788180'), 0.86)),
+          '--ring': '0 0 0 3px rgba(' + mix(c, W, 0.3).map(Math.round).join(', ') + ', .25)',
+        },
+      };
+    },
+    css(h) {
+      if (this.isBawaan(h)) return '';
+      const p = this.palet(h);
+      const blok = o => Object.keys(o).map(k => k + ':' + o[k]).join(';');
+      return ':root{' + blok(p.brand) + ';' + blok(p.light) + '}' +
+        ':root[data-theme="dark"]{' + blok(p.brand) + ';' + blok(p.dark) + '}';
+    },
+    /** terapkan (dan ingat di perangkat agar tidak berkedip saat dibuka lagi) */
+    apply(h) {
+      h = hx(h) ? String(h).toUpperCase() : '';
+      const css = this.css(h);
+      try { if (h) localStorage.setItem('mp_warna', h); else localStorage.removeItem('mp_warna'); localStorage.setItem('mp_brand_css', css); } catch (e) { /* abaikan */ }
+      let st = document.getElementById('brand-css');
+      if (!st) { st = document.createElement('style'); st.id = 'brand-css'; document.head.appendChild(st); }
+      if (st.textContent !== css) { st.textContent = css; document.dispatchEvent(new CustomEvent('themechange')); }
+      App.theme.meta();
+    },
+    /** warna untuk grafik & PDF */
+    rgb() { return this.palet(this.current() || this.BAWAAN).rgb; },
+    hex(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); },
   };
 
   // ───────────────────────── Logo (cache lokal + sinkron) ─────────────────────────
@@ -568,7 +638,13 @@
       return '<span class="logo-circle" data-logo="' + side + '">' +
         (c ? '<img src="' + c.dataUrl + '" alt="Logo ' + side + '">' : icon(fallback || (side === 'kiri' ? 'landmark' : 'cap'), 'lg')) + '</span>';
     },
+    /** gaya latar banner beranda (gambar + lapisan warna merek supaya tulisan tetap terbaca) */
+    bannerStyle() {
+      const c = this.get('banner');
+      return c ? 'background-image:linear-gradient(180deg, rgba(var(--b-rgb), .35) 0%, rgba(var(--b-rgb), .55) 45%, rgba(var(--b-rgb), .92) 100%), url(' + c.dataUrl + ');background-size:cover;background-position:center' : '';
+    },
     paint() {
+      $$('[data-banner]').forEach(el => { el.setAttribute('style', App.logo.bannerStyle()); el.classList.toggle('has-banner', !!App.logo.get('banner')); });
       $$('[data-logo]').forEach(el => {
         const side = el.getAttribute('data-logo');
         const c = App.logo.get(side);
@@ -578,7 +654,7 @@
     /** Sinkronkan bila ID logo di server berbeda dengan cache */
     async sync(ids) {
       if (!ids) return;
-      const need = ['kiri'].some(s => {
+      const need = ['kiri', 'banner'].some(s => {
         const want = ids[s] || '';
         const have = (App.ls.get('mp_logo_' + s) || {}).id || '';
         return want !== have;
@@ -586,7 +662,7 @@
       if (!need) return;
       try {
         const r = await App.api.call('getLogos');
-        ['kiri', 'kanan'].forEach(s => {
+        ['kiri', 'kanan', 'banner'].forEach(s => {
           if (r[s] && r[s].dataUrl) App.ls.set('mp_logo_' + s, r[s]);
           else App.ls.del('mp_logo_' + s);
         });
@@ -668,6 +744,8 @@
           const changed = JSON.stringify(d) !== JSON.stringify(this.data);
           this.data = d;
           this.persist();
+          const w = (d.pengaturan && d.pengaturan.warna) || '';
+          if ((w || App.brand.BAWAAN).toUpperCase() !== (App.brand.current() || App.brand.BAWAAN)) App.brand.apply(w);
           if (changed) this.emit();
         }
         return this.data;

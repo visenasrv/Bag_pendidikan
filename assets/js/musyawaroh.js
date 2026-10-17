@@ -293,17 +293,37 @@
     const tg = B.tanggapan(l.ID);
     const ada = v => v !== '' && v !== undefined && v !== null;
     const pct = v => (ada(v) ? App.fmtNum(v) + '%' : '—');
-    const jen = [
-      ['Caberawit', l.Jml_Caberawit, (l.Cbr_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Cbr_Hadir) + ' · materi ' + pct(l.Cbr_Materi)],
-      ['Praremaja', l.Jml_Praremaja, (l.Prm_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Prm_Hadir) + ' · materi ' + pct(l.Prm_Materi)],
-      ['Remaja', l.Jml_Remaja, (l.Rmj_HariEfektif || 0) + ' hari efektif · hadir ' + pct(l.Rmj_Hadir) + ' · materi ' + pct(l.Rmj_Materi)],
-      ['Pranikah', l.Jml_Pranikah, 'Sambung 1: ' + pct(l.Pnk_Hadir1) + (ada(l.Pnk_Hadir2) ? ' · Sambung 2: ' + pct(l.Pnk_Hadir2) : '')],
-    ];
-    const linkOk = ['Cbr_Link', 'Prm_Link', 'Rmj_Link', 'Pnk_Link', 'MM_Link'].filter(k => l[k] === 'Sudah').length;
+    // kartu jenjang: depan = bulan ini, belakang (diketuk → berbalik) = laporan bulan sebelumnya
+    const pb = +per.bulan === 1 ? 12 : +per.bulan - 1, pt = +per.bulan === 1 ? +per.tahun - 1 : +per.tahun;
+    const lp = B.laporanPeriode(pb, pt).find(x => x.KelompokID === l.KelompokID) || null;
+    const catatan = (x, p) => (p === 'Pnk'
+      ? 'Sambung 1: ' + pct(x.Pnk_Hadir1) + (ada(x.Pnk_Hadir2) ? ' · Sambung 2: ' + pct(x.Pnk_Hadir2) : '')
+      : (x[p + '_HariEfektif'] || 0) + ' hari efektif · hadir ' + pct(x[p + '_Hadir']) + ' · materi ' + pct(x[p + '_Materi']));
+    const jen = [['Caberawit', 'Jml_Caberawit', 'Cbr'], ['Praremaja', 'Jml_Praremaja', 'Prm'], ['Remaja', 'Jml_Remaja', 'Rmj'], ['Pranikah', 'Jml_Pranikah', 'Pnk']];
+    const jenHtml = j => {
+      const now = App.num(l[j[1]]);
+      let back;
+      if (lp) {
+        const dulu = App.num(lp[j[1]]), d = now - dulu;
+        const bi = esc(App.BULAN[+per.bulan - 1]);
+        const tren = d > 0 ? '<span class="tren up">▲ naik ' + App.fmtNum(d) + ' di ' + bi + '</span>' : d < 0 ? '<span class="tren down">▼ turun ' + App.fmtNum(-d) + ' di ' + bi + '</span>' : '<span class="tren same">= tetap di ' + bi + '</span>';
+        back = '<div class="h">' + j[0] + ' · ' + esc(App.periode(pb, pt)) + '</div><div class="n">' + App.fmtNum(dulu) + '<small>Orang</small></div><div class="note">' + esc(catatan(lp, j[2])) + '</div>' + tren;
+      } else {
+        back = '<div class="h">' + j[0] + ' · ' + esc(App.periode(pb, pt)) + '</div><div class="kosong">' + icon('clock') + '<b>Belum ada laporan</b><span>' + esc(App.periode(pb, pt)) + '</span></div>';
+      }
+      return '<button class="jen flip" data-flip aria-label="' + j[0] + ': ketuk untuk melihat bulan sebelumnya"><span class="jen-in">' +
+        '<span class="face front"><span class="h">' + j[0] + '</span><span class="n">' + App.fmtNum(now) + '<small>Orang</small></span><span class="note">' + esc(catatan(l, j[2])) + '</span><span class="flip-hint">' + icon('refresh', 'sm') + ' bulan lalu</span></span>' +
+        '<span class="face back">' + back + '<span class="flip-hint">' + icon('refresh', 'sm') + ' bulan ini</span></span></span></button>';
+    };
+    const LINK = [['Cbr_Link', 'Caberawit'], ['Prm_Link', 'Praremaja'], ['Rmj_Link', 'Remaja'], ['Pnk_Link', 'Pranikah'], ['MM_Link', 'Muda-Mudi']];
+    const linkOk = LINK.filter(x => l[x[0]] === 'Sudah').length;
+    const linkBelum = LINK.filter(x => l[x[0]] !== 'Sudah').map(x => x[1]);
     const yaTidak = v => (v === 'Sudah' ? '<span class="badge ok">' + icon('checkCircle', 'sm') + ' Sudah</span>' : (v ? '<span class="badge warn">' + icon('clock', 'sm') + ' Belum</span>' : '—'));
     const lain = [
       ['fileCheck', 'Laporan PJP di Link', yaTidak(/^sudah/i.test(l.PJP_Link || '') ? 'Sudah' : l.PJP_Link)],
-      ['listCheck', 'Laporan kelas di link', '<b>' + linkOk + ' / 5</b> jenjang'],
+      ['listCheck', 'Laporan kelas di link', '<b>' + linkOk + ' / 5</b> jenjang', linkBelum.length
+        ? '<div class="link-belum"><span>Belum:</span>' + linkBelum.map(n => '<span class="badge warn">' + icon('clock', 'sm') + ' ' + esc(n) + '</span>').join('') + '</div>'
+        : '<div class="link-belum"><span class="badge ok">' + icon('checkCircle', 'sm') + ' Semua jenjang sudah</span></div>'],
       ['building', 'Generus Sedang Mondok', '<b>' + App.fmtNum(App.num(l.Generus_Sedang_Mondok)) + '</b> Orang'],
       ['mic', 'Sudah Mubaligh/Mubalighot', '<b>' + App.fmtNum(App.num(l.Generus_Sudah_Mondok)) + '</b> Orang'],
     ];
@@ -335,9 +355,9 @@
     return '<div class="kel-head"><div><span class="kicker">Laporan Kelompok</span> <span class="muted" style="margin-left:.6em">' + icon('calendar', 'sm') + ' Bulan Kegiatan Penuh: <b style="color:var(--text)">' + esc(periode) + '</b></span>' +
       '<h2 class="giant">KELOMPOK ' + esc(String(s.k.nama).toUpperCase()) + '</h2><div class="underline"></div>' +
       '<div class="muted" style="margin-top:.7em">' + icon('shield', 'sm') + ' Dikirim ' + esc(App.fmtWaktu(l.WaktuKirim, { noYear: true })) + (l.WaktuUbah ? ' · dikoreksi' : '') + '</div></div>' + mus + '</div>' +
-      '<div class="p-grid"><div><div class="jen-grid">' + jen.map(j => '<div class="jen"><div class="h">' + j[0] + '</div><div class="n">' + App.fmtNum(App.num(j[1])) + '<small>Orang</small></div><div class="note">' + esc(j[2]) + '</div></div>').join('') + '</div>' +
+      '<div class="p-grid"><div><div class="jen-grid">' + jen.map(jenHtml).join('') + '</div>' +
       '<div class="total-band"><div><div style="font-weight:800;letter-spacing:.08em;text-transform:uppercase">' + icon('award') + ' Total Generus Kelompok</div><div style="opacity:.85;margin-top:.3em">Caberawit + Praremaja + Remaja + Pranikah</div></div><div class="n">' + App.fmtNum(r.total) + '<small>Orang</small></div></div></div>' +
-      '<div class="side-card"><h3>' + icon('listCheck') + ' Lainnya</h3>' + lain.map(x => '<div class="kbm-row"><span>' + icon(x[0], 'sm') + ' ' + esc(x[1]) + '</span><span>' + x[2] + '</span></div>').join('') + '</div></div>' +
+      '<div class="side-card"><h3>' + icon('listCheck') + ' Lainnya</h3>' + lain.map(x => '<div class="kbm-row' + (x[3] ? ' has-sub' : '') + '"><span>' + icon(x[0], 'sm') + ' ' + esc(x[1]) + '</span><span>' + x[2] + '</span>' + (x[3] || '') + '</div>').join('') + '</div></div>' +
       '<div class="p-two">' + mmCard + thfCard + '</div>' +
       '<div class="p-three">' + kolHtml + '</div>' +
       '<div class="side-card tg-umum" data-bidang="_umum"><h3>' + icon('edit') + ' Catatan Musyawaroh untuk ' + esc(s.k.nama) + '</h3>' + tgBox('_umum', umum, 'Tambah catatan / keputusan') + '</div>';
@@ -356,6 +376,7 @@
 
   /** Klik "Tanggapi" → kotak isian di tempat; simpan optimistis (langsung tampil, sinkron di latar) */
   function bindTanggapan(slide, s, per, list, wajib) {
+    slide.querySelectorAll('[data-flip]').forEach(c => { c.onclick = () => c.classList.toggle('flipped'); });
     if (s.t !== 'kelompok' || !s.l) return;
     const l = s.l;
     slide.querySelectorAll('[data-tg]').forEach(btn => {

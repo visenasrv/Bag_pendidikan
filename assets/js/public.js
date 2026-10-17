@@ -53,22 +53,21 @@
     if (!App.api.configured()) return setupScreen();
     const per = App.bulanLalu();
     const cfg0 = App.swrPeek('cfg') || {};
+    const menu = [
+      ['#/lapor', 'fileEdit', 'Isi Laporan', 'utama'], ['#/koreksi', 'fileCheck', 'Koreksi'], ['#/dashboard', 'chart', 'Dashboard'],
+      ['#/monitoring', 'heart', 'Monitoring Akhlaq'], ['#/notulen', 'book', 'Notulen'], ['#/admin', 'lock', 'Admin'],
+    ];
     const root = App.mount(
       '<div class="pub">' +
-      '<section class="hero"><div class="pattern"></div><div class="bar">' + App.logo.html('kiri') +
+      '<section class="hero ' + (App.logo.get('banner') ? 'has-banner' : '') + '" data-banner style="' + App.logo.bannerStyle() + '"><div class="pattern"></div><div class="bar">' + App.logo.html('kiri') +
       '<div class="right"><button class="icon-btn light" data-theme aria-label="Ganti tema">' + icon('moon') + '</button></div></div>' +
       '<h1 data-nama>' + esc(cfg0.namaAplikasi || 'Musyawaroh & Pelaporan Bagian Pendidikan') + '</h1><p data-sub>' + esc(cfg0.subjudul || 'PPG Kutai Timur · Desa Sangatta Selatan') + '</p></section>' +
-      '<div class="card home-period"><div class="when"><span class="ico-tile sm">' + icon('calendar') + '</span><div><small>Laporan bulan:</small><b>' + App.periode(per.bulan, per.tahun) + '</b></div></div><span data-count></span></div>' +
-      '<div class="tiles">' +
-      '<a class="tile primary" href="#/lapor"><span class="ico-tile">' + icon('fileEdit') + '</span><span class="go">' + icon('arrowUR') + '</span><h3>Isi Laporan</h3><p>Kirim laporan bulanan</p></a>' +
-      '<a class="tile" href="#/koreksi"><span class="ico-tile">' + icon('fileCheck') + '</span><span class="go">' + icon('chevR') + '</span><h3>Koreksi Laporan</h3><p>Ubah dengan kode unik</p></a>' +
-      '<a class="tile" href="#/dashboard"><span class="ico-tile">' + icon('chart') + '</span><span class="go">' + icon('chevR') + '</span><h3>Dashboard</h3><p>Rekap data generus</p></a>' +
-      '<a class="tile" href="#/notulen"><span class="ico-tile">' + icon('book') + '</span><span class="go">' + icon('chevR') + '</span><h3>Notulen</h3><p>Hasil musyawaroh</p></a>' +
-      '</div>' +
-      '<section class="card" style="margin-top:16px"><div class="card-head"><div class="card-title" style="font-size:15px">Status Laporan ' + App.periode(per.bulan, per.tahun) + '</div><span class="muted" style="font-size:13px" data-kcount></span></div><div data-status>' +
-      '<div class="skeleton" style="height:56px"></div><div class="skeleton" style="height:56px;margin-top:6px"></div><div class="skeleton" style="height:56px;margin-top:6px"></div></div></section>' +
+      '<nav class="app-grid" aria-label="Menu">' + menu.map(m => '<a class="app-ico ' + (m[3] || '') + '" href="' + m[0] + '"><span class="ic">' + icon(m[1]) + '</span><span class="lb">' + m[2] + '</span></a>').join('') + '</nav>' +
+      '<section class="card status-mini"><div class="sm-head"><div><small>Status Laporan</small><b>' + App.periode(per.bulan, per.tahun) + '</b></div><span class="sm-count" data-count></span></div>' +
+      '<div class="sm-bar"><i data-bar style="width:0%"></i></div>' +
+      '<div class="sm-list" data-status><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div></div></section>' +
       '<div data-total style="margin-top:16px"></div>' +
-      '<div class="home-foot"><a class="admin-link" href="#/admin">' + icon('lock') + ' Masuk Admin</a><p>© ' + App.nowWita().y + ' Bagian Pendidikan Desa Sangatta Selatan</p></div>' +
+      '<div class="home-foot"><p>© ' + App.nowWita().y + ' Bagian Pendidikan Desa Sangatta Selatan</p></div>' +
       '</div>');
     bindTop(root);
 
@@ -76,15 +75,16 @@
       if (!App.alive(vid)) return;
       root.querySelector('[data-nama]').textContent = cfg.namaAplikasi;
       root.querySelector('[data-sub]').textContent = cfg.subjudul;
-      App.logo.sync({ kiri: cfg.logoKiri, kanan: cfg.logoKanan });
     }).catch(() => {});
 
     const paint = d => {
       if (!App.alive(vid)) return;
       const b = d.bulan[per.bulan - 1];
-      root.querySelector('[data-count]').innerHTML = '<span class="badge ok">' + b.jumlahLapor + ' dari ' + b.jumlahWajib + ' kelompok sudah lapor</span>';
-      root.querySelector('[data-kcount]').textContent = b.jumlahWajib + ' Kelompok';
-      root.querySelector('[data-status]').innerHTML = statusRows(b.status);
+      root.querySelector('[data-count]').innerHTML = '<b>' + b.jumlahLapor + '</b>/' + b.jumlahWajib + ' lapor';
+      root.querySelector('[data-bar]').style.width = (b.jumlahWajib ? Math.round(100 * Math.min(b.jumlahLapor, b.jumlahWajib) / b.jumlahWajib) : 0) + '%';
+      root.querySelector('[data-status]').innerHTML = b.status.length ? b.status.map(s =>
+        '<div class="sm-item ' + (s.sudah ? 'ok' : 'wait') + '" title="' + esc(s.sudah ? 'Dikirim ' + App.fmtWaktu(s.waktuKirim, { noYear: true }) : 'Belum mengirim') + '">' +
+        icon(s.sudah ? 'checkCircle' : 'clock', 'sm') + '<span>' + esc(s.nama) + '</span></div>').join('') : '<div class="empty">Belum ada kelompok wajib lapor.</div>';
       root.querySelector('[data-total]').innerHTML = heroTotal(b, { tag: 'Bulan Aktif' });
     };
     App.data.dash(per.tahun, paint).catch(e => {
@@ -94,7 +94,7 @@
       if (r) r.onclick = () => App.render();
     });
     // Siapkan data halaman lain di latar → perpindahan halaman terasa instan
-    App.idle(() => { App.data.notulen().catch(() => {}); });
+    App.idle(() => { App.data.notulen().catch(() => {}); App.data.monitoring().catch(() => {}); });
   });
 
   // ───────────────────────── ISI LAPORAN ─────────────────────────

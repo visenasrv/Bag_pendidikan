@@ -13,6 +13,13 @@
     line: [226, 232, 229], tint: [236, 253, 245], gold: [201, 162, 39], warn: [146, 64, 14], warnBg: [254, 243, 199], okBg: [209, 250, 229], ok: [6, 95, 70],
   };
 
+  /** warna kop & judul PDF mengikuti warna utama aplikasi (v1.4) */
+  function warnaPdf() {
+    const r = App.brand ? App.brand.rgb() : null;
+    if (!r) return;
+    C.deep = r.deep; C.primary = r.mid; C.tint = r.tint;
+  }
+
   App.meta = function () {
     const s = (App.store && App.store.data && App.store.data.pengaturan) || App.swrPeek('cfg') || {};
     return { nama: s.namaAplikasi || 'Musyawaroh & Pelaporan Bagian Pendidikan', sub: s.subjudul || 'PPG Kutai Timur · Desa Sangatta Selatan' };
@@ -96,6 +103,7 @@
   // ───────────────────────── Penulis halaman ─────────────────────────
   class Writer {
     constructor(Ctor, info) {
+      warnaPdf();
       this.info = info || null;      // {tanggal, tempat} dari notulen → tampil di kop
       this.doc = new Ctor({ unit: 'mm', format: 'a4', compress: true });
       this.W = 210; this.H = 297; this.M = 16;

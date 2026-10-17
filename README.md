@@ -25,6 +25,7 @@ assets/js/
   musyawaroh.js     Mode Musyawaroh + tanggapan                                 │ saat #/admin
   pengaturan.js     Kelompok & Dapuan, Logo, Akun, Tempat, Tampilan             ┘ dibuka
   notulen.js        tampilan & editor notulen gaya Google Dokumen
+  monitoring.js     Dashboard Monitoring & Bimbingan Akhlaq (umum & admin)
   pdf.js            PDF (jsPDF)
   app.js            titik mulai
 ```
@@ -38,6 +39,7 @@ assets/js/
 | `#/koreksi` | Koreksi Laporan |
 | `#/dashboard` | Dashboard ringkasan |
 | `#/notulen` | Notulen |
+| `#/monitoring` | Dashboard Monitoring & Bimbingan Akhlaq |
 | `#/admin` | Admin (login) |
 
-Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.3.1** (Mode Musyawaroh bisa diperkecil & catat notulen dari layar penuh; tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).
+Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.4.0** (Dashboard Monitoring & Bimbingan Akhlaq, warna utama & banner, beranda gaya menu HP, kartu jenjang berbalik; Mode Musyawaroh bisa diperkecil & catat notulen dari layar penuh; tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).

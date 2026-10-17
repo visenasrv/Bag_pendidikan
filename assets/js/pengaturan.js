@@ -7,7 +7,7 @@
   const App = window.App;
   const esc = App.esc, icon = App.icon, Store = App.store, B = App.B;
 
-  const TABS = [['kelompok', 'Kelompok & Pengurus', 'users'], ['logo', 'Logo', 'image'], ['akun', 'Akun & Email', 'key'], ['notulen', 'Tempat Notulen', 'pin'], ['tampilan', 'Tampilan', 'palette']];
+  const TABS = [['kelompok', 'Kelompok & Pengurus', 'users'], ['logo', 'Logo & Banner', 'image'], ['tampilan', 'Warna & Tema', 'palette'], ['akun', 'Akun & Email', 'key'], ['notulen', 'Tempat Notulen', 'pin'], ['monitoring', 'Monitoring', 'heart']];
 
   App.route('/admin/pengaturan', App.admin.page('pengaturan', 'Pengaturan', function (c) {
     const tab = App.ls.get('mp_set_tab') || 'kelompok';
@@ -15,7 +15,7 @@
       '<div class="tabs">' + TABS.map(t => '<button class="tab ' + (t[0] === tab ? 'on' : '') + '" data-tab="' + t[0] + '">' + icon(t[2], 'sm') + ' ' + t[1] + '</button>').join('') + '</div><div data-body style="max-width:860px"></div>';
     c.querySelectorAll('[data-tab]').forEach(b => { b.onclick = () => { App.ls.set('mp_set_tab', b.getAttribute('data-tab')); App.render(); }; });
     const body = c.querySelector('[data-body]');
-    ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan })[tab](body);
+    ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring })[tab] ? ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring })[tab](body) : tabKelompok(body);
   }));
 
   // ───────────────────────── Kelompok & Pengurus ─────────────────────────
@@ -176,30 +176,43 @@
     };
   }
 
-  // ───────────────────────── Logo ─────────────────────────
+  // ───────────────────────── Logo & Banner ─────────────────────────
+  const SLOT = {
+    kiri: { judul: 'Logo Aplikasi', sub: 'PNG, JPG, atau SVG · maks. 1 MB. Dipakai di semua halaman, Mode Musyawaroh, dan kop PDF.', max: 512, fmt: 'image/png', key: 'logoKiri', ikon: 'landmark' },
+    banner: { judul: 'Banner Beranda', sub: 'Gambar latar di bagian atas halaman depan. Disarankan gambar mendatar (mis. 1600 × 700 px), JPG/PNG. Otomatis diperkecil.', max: 1600, fmt: 'image/jpeg', key: 'banner', ikon: 'image' },
+  };
+  const pend = {};   // pratinjau yang belum disimpan — tetap ada walau halaman digambar ulang saat sinkron latar
   function tabLogo(el) {
-    const pend = {};
     const draw = () => {
-      el.innerHTML = '<section class="card"><div class="card-title">' + icon('image') + ' Logo Kop</div><div class="card-sub">Satu logo · PNG, JPG, atau SVG · maks. 1 MB. Otomatis diperkecil & dipakai di semua halaman, Mode Musyawaroh, dan kop PDF.</div>' +
-        '<div class="logo-one" style="margin-top:16px">' + ['kiri'].map(side => {
-          const cur = App.logo.get(side);
-          const src = pend[side] || (cur && cur.dataUrl);
-          return '<div class="logo-slot"><b>Logo Aplikasi</b><div class="prev">' + (src ? '<img src="' + src + '" alt="">' : icon(side === 'kiri' ? 'landmark' : 'cap', 'lg')) + '</div>' +
-            (pend[side] ? '<span class="badge warn">Pratinjau — belum disimpan</span>' : '') +
-            '<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden data-file="' + side + '">' +
-            '<div class="row wrap" style="justify-content:center">' +
-            '<button class="btn btn-soft btn-sm" data-pick="' + side + '">' + icon('upload') + ' Pilih Gambar</button>' +
-            (pend[side] ? '<button class="btn btn-primary btn-sm" data-save="' + side + '">' + icon('save') + ' Simpan</button><button class="btn btn-ghost btn-sm" data-cancel="' + side + '">Batal</button>' : '') +
-            (!pend[side] && cur ? '<button class="btn btn-danger btn-sm" data-rm="' + side + '">' + icon('trash') + ' Hapus</button>' : '') + '</div></div>';
-        }).join('') + '</div></section>';
+      el.innerHTML = Object.keys(SLOT).map(side => {
+        const S = SLOT[side];
+        const cur = App.logo.get(side);
+        const src = pend[side] || (cur && cur.dataUrl);
+        return '<section class="card" style="margin-bottom:16px"><div class="card-title">' + icon(S.ikon) + ' ' + S.judul + '</div><div class="card-sub">' + S.sub + '</div>' +
+          '<div class="logo-slot ' + (side === 'banner' ? 'banner-slot' : 'logo-one') + '" style="margin-top:14px">' +
+          (side === 'banner'
+            ? '<div class="banner-prev hero ' + (src ? 'has-banner' : '') + '" style="' + (src ? 'background-image:linear-gradient(180deg, rgba(var(--b-rgb), .35) 0%, rgba(var(--b-rgb), .55) 45%, rgba(var(--b-rgb), .92) 100%), url(' + src + ');background-size:cover;background-position:center' : '') + '"><div class="pattern"></div><b>' + esc(App.meta().nama) + '</b><small>' + esc(App.meta().sub) + '</small></div>'
+            : '<div class="prev">' + (src ? '<img src="' + src + '" alt="">' : icon(S.ikon, 'lg')) + '</div>') +
+          (pend[side] ? '<span class="badge warn">Pratinjau — belum disimpan</span>' : '') +
+          '<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden data-file="' + side + '">' +
+          '<div class="row wrap" style="justify-content:center">' +
+          '<button class="btn btn-soft btn-sm" data-pick="' + side + '">' + icon('upload') + ' Pilih Gambar</button>' +
+          (pend[side] ? '<button class="btn btn-primary btn-sm" data-save="' + side + '">' + icon('save') + ' Simpan</button><button class="btn btn-ghost btn-sm" data-cancel="' + side + '">Batal</button>' : '') +
+          (!pend[side] && cur ? '<button class="btn btn-danger btn-sm" data-rm="' + side + '">' + icon('trash') + ' Hapus</button>' : '') + '</div></div></section>';
+      }).join('');
       el.querySelectorAll('[data-pick]').forEach(b => { b.onclick = () => el.querySelector('[data-file="' + b.getAttribute('data-pick') + '"]').click(); });
       el.querySelectorAll('[data-file]').forEach(inp => {
         inp.onchange = async () => {
           const f = inp.files[0];
+          const side = inp.getAttribute('data-file');
           if (!f) return;
           if (!/^image\/(png|jpeg|svg\+xml|webp)$/.test(f.type)) { App.toast('Format harus PNG, JPG, atau SVG.', 'warn'); return; }
-          if (f.size > 1024 * 1024) { App.toast('Ukuran logo maksimal 1 MB.', 'warn'); return; }
-          try { pend[inp.getAttribute('data-file')] = await toPng(f, 512); draw(); } catch (e) { App.toast('Gambar tidak dapat dibaca.', 'err'); }
+          if (f.size > 8 * 1024 * 1024) { App.toast('Ukuran gambar maksimal 8 MB.', 'warn'); return; }
+          try {
+            pend[side] = await toPng(f, SLOT[side].max, SLOT[side].fmt);
+            if (pend[side].length > 1300000) { delete pend[side]; App.toast('Gambar masih terlalu besar setelah diperkecil. Coba gambar lain.', 'warn'); return; }
+            draw();
+          } catch (e) { App.toast('Gambar tidak dapat dibaca.', 'err'); }
         };
       });
       el.querySelectorAll('[data-cancel]').forEach(b => { b.onclick = () => { delete pend[b.getAttribute('data-cancel')]; draw(); }; });
@@ -210,11 +223,11 @@
           try {
             const r = await App.api.admin('unggahLogo', { posisi: side, dataUrl: pend[side] });
             App.ls.set('mp_logo_' + side, { id: r.id, dataUrl: pend[side] });
-            if (Store.data) { Store.data.pengaturan[side === 'kiri' ? 'logoKiri' : 'logoKanan'] = r.id; Store.persist(); }
+            if (Store.data) { Store.data.pengaturan[SLOT[side].key] = r.id; Store.persist(); }
             delete pend[side];
             App.swrBust('cfg');
             App.logo.paint();
-            App.toast('Logo tersimpan.');
+            App.toast(SLOT[side].judul + ' tersimpan.');
             draw();
           } catch (e) { App.toast(e.message, 'err'); App.busy(b, false); }
         };
@@ -222,13 +235,13 @@
       el.querySelectorAll('[data-rm]').forEach(b => {
         b.onclick = async () => {
           const side = b.getAttribute('data-rm');
-          const ok = await App.confirm({ title: 'Hapus logo?', message: 'Logo akan diganti ikon bawaan.', ok: 'Hapus', danger: true });
+          const ok = await App.confirm({ title: 'Hapus ' + SLOT[side].judul.toLowerCase() + '?', message: side === 'banner' ? 'Beranda kembali memakai latar warna bawaan.' : 'Logo akan diganti ikon bawaan.', ok: 'Hapus', danger: true });
           if (!ok) return;
           App.busy(b, true);
           try {
             await App.api.admin('hapusLogo', { posisi: side });
             App.ls.del('mp_logo_' + side);
-            if (Store.data) { Store.data.pengaturan[side === 'kiri' ? 'logoKiri' : 'logoKanan'] = ''; Store.persist(); }
+            if (Store.data) { Store.data.pengaturan[SLOT[side].key] = ''; Store.persist(); }
             App.swrBust('cfg');
             App.logo.paint();
             draw();
@@ -239,8 +252,7 @@
     draw();
   }
 
-  /** Ubah gambar apa pun (termasuk SVG) menjadi PNG persegi maks. `max` px — ringan & cocok untuk PDF */
-  function toPng(file, max) {
+  function toPng(file, max, fmt) {
     return new Promise((res, rej) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -250,9 +262,11 @@
         const cw = Math.max(1, Math.round(w * s)), ch = Math.max(1, Math.round(h * s));
         const cv = document.createElement('canvas');
         cv.width = cw; cv.height = ch;
-        cv.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        const g = cv.getContext('2d');
+        if (fmt === 'image/jpeg') { g.fillStyle = '#fff'; g.fillRect(0, 0, cw, ch); }
+        g.drawImage(img, 0, 0, cw, ch);
         URL.revokeObjectURL(url);
-        res(cv.toDataURL('image/png'));
+        res(fmt === 'image/jpeg' ? cv.toDataURL('image/jpeg', 0.82) : cv.toDataURL('image/png'));
       };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
       img.src = url;
@@ -338,15 +352,77 @@
     draw();
   }
 
-  // ───────────────────────── Tampilan ─────────────────────────
+  // ───────────────────────── Warna & Tema ─────────────────────────
   function tabTampilan(el) {
+    let pilih = (B.set().warna || App.brand.current() || App.brand.BAWAAN).toUpperCase();
     const draw = () => {
       const m = App.theme.mode();
-      el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('palette') + ' Tema Tampilan</div><div class="card-sub">Pilihan diingat di perangkat ini.</div>' +
+      const simpan = (B.set().warna || App.brand.BAWAAN).toUpperCase();
+      el.innerHTML =
+        '<section class="card lg"><div class="card-title">' + icon('palette') + ' Warna Utama Aplikasi</div><div class="card-sub">Dipakai di semua halaman (umum & admin), Mode Musyawaroh, grafik, dan kop PDF. Berlaku untuk semua pengguna.</div>' +
+        '<div class="warna-grid" style="margin-top:16px">' + App.brand.PRESET.map(p =>
+          '<button class="warna-opt ' + (pilih === p[1] ? 'on' : '') + '" data-w="' + p[1] + '"><span class="sw" style="background:linear-gradient(145deg,' + p[1] + ',' + p[1] + 'CC)"></span><span>' + p[0] + '</span></button>').join('') +
+        '<label class="warna-opt custom ' + (App.brand.PRESET.some(p => p[1] === pilih) ? '' : 'on') + '"><input type="color" data-cw value="' + pilih + '"><span class="sw" style="background:' + pilih + '"></span><span>Pilih sendiri</span></label></div>' +
+        '<div class="warna-prev" style="margin-top:16px"><span class="badge">Pratinjau</span><div class="row wrap" style="gap:8px;margin-top:10px"><button class="btn btn-primary btn-sm">' + icon('save', 'sm') + ' Tombol utama</button><button class="btn btn-outline btn-sm">Tombol garis</button><span class="badge ok">Sudah</span><span class="chip on">Aktif</span><code style="font-size:13px">' + pilih + '</code></div></div>' +
+        '<div class="row wrap" style="margin-top:16px;gap:8px"><button class="btn btn-primary" data-simpan ' + (pilih === simpan ? 'disabled' : '') + '>' + icon('save') + ' Simpan Warna</button>' +
+        '<button class="btn btn-ghost" data-reset ' + (pilih === App.brand.BAWAAN && simpan === App.brand.BAWAAN ? 'disabled' : '') + '>' + icon('refresh', 'sm') + ' Kembali ke Hijau Zamrud</button></div></section>' +
+        '<section class="card lg" style="margin-top:16px"><div class="card-title">' + icon('moon') + ' Tema Tampilan</div><div class="card-sub">Pilihan diingat di perangkat ini saja.</div>' +
         '<div class="theme-pick" style="margin-top:16px">' + [['light', 'Terang', 'sun'], ['dark', 'Gelap', 'moon']].map(t =>
           '<button class="' + (m === t[0] ? 'on' : '') + '" data-m="' + t[0] + '">' + icon(t[2], 'lg') + t[1] + '</button>').join('') + '</div></section>';
       el.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => { App.theme.set(b.getAttribute('data-m')); draw(); }; });
+      const coba = w => { pilih = w.toUpperCase(); App.brand.apply(pilih); draw(); };   // pratinjau langsung
+      el.querySelectorAll('[data-w]').forEach(b => { b.onclick = () => coba(b.getAttribute('data-w')); });
+      const cw = el.querySelector('[data-cw]');
+      cw.oninput = App.debounce(() => coba(cw.value), 60);
+      el.querySelector('[data-simpan]').onclick = () => simpanWarna(pilih);
+      el.querySelector('[data-reset]').onclick = () => { pilih = App.brand.BAWAAN; App.brand.apply(''); simpanWarna(''); };
     };
+    const simpanWarna = w => {
+      Store.mutate('ubahPengaturan', { warna_utama: w }, d => { d.pengaturan.warna = w; }, { label: 'Warna utama' });
+      App.brand.apply(w);
+      App.swrBust('cfg');
+      App.toast('Warna utama disimpan untuk semua pengguna.');
+      draw();
+    };
+    // keluar tanpa menyimpan → kembalikan warna tersimpan
+    App.onLeave(() => { const w = B.set().warna || ''; if ((w || App.brand.BAWAAN).toUpperCase() !== (App.brand.current() || App.brand.BAWAAN)) App.brand.apply(w); });
     draw();
+  }
+
+  // ───────────────────────── Sumber data Monitoring ─────────────────────────
+  function tabMonitoring(el) {
+    const s = B.set();
+    el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('heart') + ' Sumber Data Monitoring & Bimbingan Akhlaq</div>' +
+      '<div class="card-sub">Spreadsheet jawaban Google Form monitoring orang tua. Hanya <b>dibaca</b> — data di spreadsheet tidak diubah. Akun pemilik Apps Script harus punya akses (minimal Lihat).</div>' +
+      '<div class="field" style="margin-top:16px"><label>ID atau tautan Google Sheets</label><input class="input" data-id placeholder="Kosongkan untuk memakai spreadsheet bawaan" value="' + esc(s.monitoringId || '') + '"><div class="help">' + icon('info', 'sm') + 'Boleh menempel tautan lengkap (https://docs.google.com/spreadsheets/d/…/edit).</div></div>' +
+      '<div class="field" style="margin-top:14px"><label>Nama tab (opsional)</label><input class="input" data-tab placeholder="Kosongkan = tab pertama" value="' + esc(s.monitoringTab || '') + '"></div>' +
+      '<div class="row wrap" style="margin-top:16px;gap:8px"><button class="btn btn-primary" data-save>' + icon('save') + ' Simpan</button><button class="btn btn-soft" data-tes>' + icon('refresh') + ' Muat Ulang & Periksa Data</button><a class="btn btn-ghost" href="#/admin/monitoring">' + icon('chart') + ' Buka Dashboard</a></div>' +
+      '<div data-hasil style="margin-top:14px"></div></section>';
+    const hasil = el.querySelector('[data-hasil]');
+    const periksa = async btn => {
+      App.busy(btn, true);
+      hasil.innerHTML = '';
+      try {
+        const d = await App.api.admin('segarkanMonitoring', {});
+        App.monitoringCache = d;
+        App.swrBust('mon');
+        hasil.innerHTML = '<div class="notice ok">' + icon('checkCircle') + '<div><b>Data terbaca.</b> ' + esc(d.judul) + ' · ' + App.fmtNum(d.rows.length) + ' laporan · ' + d.kelompok.length + ' kelompok · ' + App.fmtNum(d.jumlahAnak) + ' anak.</div></div>';
+      } catch (e) {
+        hasil.innerHTML = '<div class="notice err">' + icon('alertCircle') + '<div>' + esc(e.message) + '</div></div>';
+      } finally { App.busy(btn, false); }
+    };
+    el.querySelector('[data-save]').onclick = async e => {
+      const btn = e.currentTarget;
+      App.busy(btn, true);
+      try {
+        const r = await App.api.admin('ubahPengaturan', { monitoring_sheet_id: el.querySelector('[data-id]').value.trim(), monitoring_tab: el.querySelector('[data-tab]').value.trim() });
+        if (Store.data) { Store.data.pengaturan.monitoringId = r.monitoring_sheet_id || ''; Store.data.pengaturan.monitoringTab = r.monitoring_tab || ''; Store.persist(); }
+        el.querySelector('[data-id]').value = r.monitoring_sheet_id || '';
+        App.toast('Sumber data disimpan.');
+        App.busy(btn, false);
+        periksa(el.querySelector('[data-tes]'));
+      } catch (er) { App.toast(er.message, 'err'); App.busy(btn, false); }
+    };
+    el.querySelector('[data-tes]').onclick = e => periksa(e.currentTarget);
   }
 })();

@@ -13,16 +13,60 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ---
 
-## U. UPDATE KE v1.3.1 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.4.0 (untuk aplikasi yang sudah berjalan)
 
-> **Sudah memasang v1.3.0?** v1.3.1 hanya mengubah **frontend**. Cukup kerjakan **U2** dengan `musyawaroh-pelaporan-update-v1.3.1.zip`; `Kode.gs` tidak perlu diganti.
-> **Masih di v1.2.x?** Kerjakan **U1** (Kode.gs v1.3.0) **dan** U2.
+v1.4.0 mengubah **backend dan frontend**. Kerjakan **U1** dengan `Kode.gs` v1.4.0, lalu **U2** dengan `musyawaroh-pelaporan-update-v1.4.0.zip`.
 
+**Yang baru di v1.4.0**
+1. **Mode Musyawaroh:** kartu Caberawit, Praremaja, Remaja, dan Pranikah bisa **diketuk lalu berbalik** untuk menampilkan data **bulan sebelumnya** (jumlah, hari efektif, kehadiran, materi). Di baliknya juga tertulis naik atau turun dibanding bulan ini. Ketuk lagi untuk kembali.
+2. **Mode Musyawaroh:** baris "Laporan kelas di link" menyebut **jenjang mana yang masih Belum**.
+3. **Pengaturan → Warna & Tema:** admin bisa memilih **warna utama** dari pilihan siap pakai atau warna sendiri. Warna ini berlaku untuk semua pengguna, mode terang dan gelap, grafik, dan kop PDF.
+   **Pengaturan → Logo & Banner:** admin bisa memasang **banner** sebagai gambar latar di bagian atas beranda.
+4. **Dashboard Monitoring & Bimbingan Akhlaq** (menu baru, untuk umum dan admin), mengikuti PRD dashboard monitoring orang tua:
+   - filter kategori usia, tahun, bulan, dan kelompok;
+   - kartu ringkasan, grafik tren per bulan, persentase bimbingan orang tua, dan 21 pertanyaan per kategori;
+   - rekap per kelompok.
+
+   Versi umum **tidak menampilkan nama anak maupun pelapor**. Tabel data rinci bernama hanya ada di halaman admin.
+5. **Beranda baru** bergaya menu aplikasi HP: ikon dengan tulisan di bawahnya. Status laporan juga dibuat lebih ringkas.
+
+### Sumber data Monitoring
+- Bawaan: spreadsheet `1SAsZ_9x3bc-TQP9rgdFTCpcs2n53dxST7OUO_RtK4R8`, tab pertama. Bisa diganti di **Pengaturan → Monitoring**, boleh dengan menempel tautan lengkap.
+- **Akun Google pemilik Apps Script harus bisa membuka spreadsheet itu** (minimal akses Lihat). Jika spreadsheet milik akun lain, bagikan ke akun tersebut.
+- Data dibaca langsung dari spreadsheet dan disimpan sementara selama 10 menit. Tombol **Muat ulang data** di dashboard admin, atau **Muat Ulang & Periksa Data** di Pengaturan, mengambil data terbaru saat itu juga.
+- Aplikasi hanya **membaca** spreadsheet itu dan tidak pernah mengubahnya.
+
+### U1. Backend (±3 menit)
+1. Buka spreadsheet **DB Musyawaroh & Pelaporan Bagian Pendidikan** → **Ekstensi → Apps Script**.
+2. Ganti seluruh isi `Kode.gs` dengan **`Kode.gs` v1.4.0** → **Ctrl + S**.
+3. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.** (Jangan "Deployment baru".)
+4. Uji sumber data: login admin → **Pengaturan → Monitoring → Muat Ulang & Periksa Data**. Bila muncul *"Spreadsheet Monitoring tidak dapat dibuka"*, bagikan spreadsheet monitoring ke akun pemilik Apps Script.
+
+### U2. Frontend (±5 menit)
+1. Ekstrak **`musyawaroh-pelaporan-update-v1.4.0.zip`** (tanpa `config.js`, sehingga URL server Anda aman).
+2. Salin seluruh isinya ke folder repo Anda dan pilih **Ganti file di tujuan**. Ada berkas baru: `assets/js/monitoring.js`.
+3. Di PowerShell folder repo:
+   ```powershell
+   git add .
+   git commit -m "Update v1.4.0 - monitoring akhlaq, warna & banner, beranda baru"
+   git push
+   ```
+4. Tunggu 1–2 menit → buka aplikasi → **Ctrl + Shift + R**.
+
+### U3. Cek hasil
+- Kotak kuning *"Server belum diperbarui … butuh 1.4.0"* → langkah U1-3 belum dilakukan.
+- Beranda menampilkan 6 ikon: Isi Laporan, Koreksi, Dashboard, Monitoring Akhlaq, Notulen, dan Admin.
+
+---
+
+## Riwayat update sebelumnya
+
+### v1.3.1 — Mode Musyawaroh bisa diperkecil + catat notulen
 **Tambahan v1.3.1 — Mode Musyawaroh**
 - **Perkecil (Esc):** layar penuh disembunyikan tanpa ditutup. Muncul tombol hijau **Mode Musyawaroh** yang melayang di pojok semua halaman admin; ketuk untuk membuka lagi tepat di slide terakhir, termasuk setelah halaman dimuat ulang. Tombol **×** menutup sepenuhnya.
 - **Catat Notulen (tombol N):** editor notulen terbuka di **samping laporan** yang sedang dibahas. Tombol **＋ Judul: Kelompok …** menyisipkan nama kelompok yang sedang tampil sebagai judul. Menyembunyikan panel atau memperkecil presentasi tidak menghapus tulisan, karena draf tersimpan otomatis. Draf yang sama juga bisa dilanjutkan dari menu **Notulen**.
 
-### Isi v1.3.0
+### v1.3.0
 
 **Yang baru di v1.3.0**
 1. Keterangan Muslimus hanya muncul bila jawabannya **Belum**.
@@ -49,7 +93,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 - Tab baru **Tanggapan** dibuat otomatis saat pertama kali dipakai. Tidak perlu menjalankan `setupAwal` lagi.
 - Notulen lama tetap utuh dan tampil sebagai daftar bernomor. Bila sebuah sesi diubah lewat editor baru, isinya disimpan sebagai satu dokumen. Sel kolom *Isi* diawali penanda `<!--doc-->`; dokumen panjang atau bergambar otomatis dipecah ke beberapa baris. Jangan ubah sel-sel itu manual di Sheets.
 
-### U1. Backend (±3 menit)
+#### (v1.3.0) Backend
 
 1. Buka spreadsheet **DB Musyawaroh & Pelaporan Bagian Pendidikan** → **Ekstensi → Apps Script**.
 2. Pilih seluruh isi `Kode.gs` (Ctrl + A) → hapus → tempel **seluruh isi `Kode.gs` v1.3.0** → **Ctrl + S**.
@@ -59,7 +103,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 4. (Opsional) Jalankan **`cekData`** — log menampilkan `Versi kode: 1.3.0`.
    Jika Anda melompat dari versi di bawah 1.2, jalankan juga **`pasangPemicu`** sekali.
 
-### U2. Frontend (±5 menit)
+#### (v1.3.0) Frontend
 
 1. Ekstrak **`musyawaroh-pelaporan-update-v1.3.1.zip`**.
    ZIP update ini **sengaja tidak berisi `config.js`** supaya URL server Anda tidak tertimpa.
@@ -78,7 +122,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
    ```
 4. Tunggu 1–2 menit, buka aplikasi, tekan **Ctrl + Shift + R**.
 
-### U3. Cek hasil
+#### (v1.3.0) Cek hasil
 
 - Bila muncul **kotak kuning "Server belum diperbarui … butuh 1.3.0"** → langkah U1-3 (Versi baru) belum dilakukan.
 - **Pengaturan → Logo** kini hanya satu slot. Logo kiri yang sudah ada tetap dipakai; logo kanan tidak ditampilkan lagi.
