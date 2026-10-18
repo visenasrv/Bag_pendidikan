@@ -315,7 +315,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.5.0';
+  App.SERVER_MIN = '1.5.1';
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);

@@ -42,4 +42,4 @@ assets/js/
 | `#/monitoring` | Dashboard Monitoring & Bimbingan Akhlaq |
 | `#/admin` | Admin (login) |
 
-Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.5.0** (Monitoring: data rinci umum & admin, unduh PDF / teks WA, layar penuh admin; Dashboard Monitoring & Bimbingan Akhlaq, warna utama & banner, beranda gaya menu HP, kartu jenjang berbalik; Mode Musyawaroh bisa diperkecil & catat notulen dari layar penuh; tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).
+Panduan pemasangan & update: **PANDUAN-INSTALASI.md**. Versi: **1.5.1** (Monitoring: hanya isian terakhir per anak per bulan dihitung, rincian Laporan/Anak per kelompok; data rinci umum & admin, unduh PDF / teks WA, layar penuh admin; Dashboard Monitoring & Bimbingan Akhlaq, warna utama & banner, beranda gaya menu HP, kartu jenjang berbalik; Mode Musyawaroh bisa diperkecil & catat notulen dari layar penuh; tanggapan musyawaroh, editor notulen gaya dokumen, kop PDF bertanggal, dashboard umum lengkap, urutan kelompok seret-lepas).

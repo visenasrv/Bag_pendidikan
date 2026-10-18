@@ -1094,3 +1094,36 @@ body.presenting #toasts, body.presenting .backdrop, body.presenting .overlay { z
 .btn-wa:hover { background: #1EBE5B; }
 .rinci-act { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; min-width: 260px; }
 .wa-teks { min-height: 300px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; margin-top: 10px; white-space: pre-wrap; }
+
+/* ── v1.5.1 Rekap per kelompok: rincian Laporan & Anak ── */
+.why-btn { font: inherit; color: inherit; background: none; border: 0; padding: 4px 6px; margin: -4px -6px; border-radius: 8px; cursor: pointer;
+  text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 4px; display: inline-flex; align-items: center; gap: 6px; }
+.why-btn:hover, .why-btn:focus-visible { background: var(--b-soft); color: var(--b-dark); }
+.why-btn.beda { color: var(--b-dark); font-weight: 700; text-decoration-color: var(--b-mid); }
+.why-dob { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--warn-bg); color: var(--warn-fg); text-decoration: none; }
+.why-flow { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
+.why-flow > div { flex: 1 1 110px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; text-align: center; background: var(--surface-2); }
+.why-flow > div b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.why-flow > div small { color: var(--muted); font-size: 12px; }
+.why-flow > div.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: transparent; }
+.why-flow > div.warn small { color: inherit; opacity: .85; }
+.why-flow > div.pri { background: var(--b-soft); border-color: transparent; }
+.why-flow > div.pri b { color: var(--b-dark); }
+.why-flow > i { align-self: center; color: var(--muted); display: flex; }
+.why-sec { margin-top: 18px; }
+.why-h { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.why-p { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
+.why-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.why-nm { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.why-nm .muted { font-size: 12.5px; }
+.why-ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.why-ol li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--bg); }
+.why-ol li:not(.on) > span:first-child { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(127,127,127,.5); }
+.why-ol li.on { background: var(--ok-bg); }
+.why-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.why-grid .why-item { margin: 0; }
+.why-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.why-chips span { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--b-soft); color: var(--b-dark); font-weight: 600; }
+@media (max-width: 560px) { .why-flow > i { display: none; } .why-flow > div { flex-basis: 40%; } }
+.why-pair { display: flex; flex-direction: column; gap: 6px; }
+.why-eq { color: var(--muted); font-weight: 800; line-height: 1; }

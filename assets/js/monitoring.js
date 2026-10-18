@@ -2,6 +2,8 @@
    monitoring.js — Dashboard Monitoring & Bimbingan Akhlaq (v1.4)
    Sumber: jawaban Google Form monitoring orang tua generus (dibaca server,
    dipadatkan, lalu SEMUA perhitungan dilakukan di perangkat → filter instan).
+   v1.5.1: hanya isian terakhir per anak per bulan yang dihitung; klik Laporan/Anak
+   di Rekap per Kelompok → dialog alasan (dobel, beberapa bulan, nama mirip).
    v1.5: data rinci (nama anak, pelapor) tampil untuk umum & admin, bisa diunduh
    PDF atau disalin sebagai teks WhatsApp (format pesan diatur admin).
    Admin: mode layar penuh yang bisa diperkecil (App.monFS).
@@ -67,6 +69,141 @@
     if (buka.length) { buka.forEach(p => p.classList.add('hidden')); e.stopPropagation(); }
   }, true);
 
+  // ───────────────────────── Isian terakhir per anak per bulan (v1.5.1) ─────────────────────────
+  /** Bila orang tua mengirim form lebih dari sekali untuk anak & bulan yang sama, hanya ISIAN TERAKHIR
+   *  yang dihitung. Hasil disimpan di WeakMap (data asli tidak diubah → cache SWR tetap utuh).
+   *  r[12] = waktu kirim (yyyymmddhhmmss, server ≥1.5.1); tanpa itu dipakai urutan baris sheet. */
+  const PREP = new WeakMap();
+  function siapkan(D) {
+    let P = PREP.get(D);
+    if (P) return P;
+    const grup = {};
+    D.rows.forEach((r, i) => {
+      if (!r[1] || !r[2]) return;   // tanpa bulan/tahun → tidak bisa dibandingkan, tetap dihitung
+      if (!D.nama || D.nama[r[5]] === '(tanpa nama)') return;   // nama anak kosong → bisa anak berbeda, tetap dihitung
+      const k = r[5] + '|' + r[1] + '|' + r[2];
+      (grup[k] = grup[k] || []).push(i);
+    });
+    const buang = new Set(), dobel = new Map();
+    Object.keys(grup).forEach(k => {
+      const ix = grup[k];
+      if (ix.length < 2) return;
+      ix.sort((a, b) => ((D.rows[a][12] || 0) - (D.rows[b][12] || 0)) || (a - b));
+      ix.slice(0, -1).forEach(i => buang.add(i));
+      dobel.set(D.rows[ix[ix.length - 1]], ix.map(i => D.rows[i]));
+    });
+    P = { rows: D.rows.filter((r, i) => !buang.has(i)), semua: D.rows, dobel: dobel, nBuang: buang.size };
+    PREP.set(D, P);
+    return P;
+  }
+  App.monSiapkan = siapkan;
+
+  /** waktu kirim yyyymmddhhmmss → "21 Agu 2026, 22.31" */
+  function fmtTs(t) {
+    if (!t) return '';
+    const s = String(t).padStart(14, '0');
+    return +s.slice(6, 8) + ' ' + BLN3[+s.slice(4, 6) - 1] + ' ' + s.slice(0, 4) + ', ' + s.slice(8, 10) + '.' + s.slice(10, 12);
+  }
+  /** nama dinormalkan untuk mendeteksi penulisan berbeda dari anak yang sama */
+  const normNama = s => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+  function jarak(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    let prev = Array.from({ length: b.length + 1 }, (x, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  /** Dialog: kenapa jumlah Laporan & Anak sebuah kelompok berbeda (v1.5.1) */
+  function bukaAlasan(D, P, kel, lolos, f) {
+    const semua = P.semua.filter(r => r[3] === kel && lolos(r));
+    const hitung = P.rows.filter(r => r[3] === kel && lolos(r));
+    const anakSet = {}; hitung.forEach(r => { (anakSet[r[5]] = anakSet[r[5]] || []).push(r); });
+    const nAnak = Object.keys(anakSet).length;
+    const urutNama = (a, b) => String(D.nama[a]).localeCompare(String(D.nama[b]));
+    const bln = r => (r[2] ? BLN[r[2] - 1] + ' ' + r[1] : '—');
+    const rf = ringkasFilter(D, f, hitung);
+
+    // 1) isian dobel di bulan yang sama
+    const grupDobel = [];
+    P.dobel.forEach((list, keep) => {
+      if (keep[3] !== kel) return;
+      if (!lolos(keep) && !list.some(r => lolos(r))) return;
+      grupDobel.push({ keep: keep, list: list });
+    });
+    grupDobel.sort((a, b) => (b.keep[1] * 100 + b.keep[2]) - (a.keep[1] * 100 + a.keep[2]) || urutNama(a.keep[5], b.keep[5]));
+    const nDiabaikan = Math.max(0, semua.length - hitung.length);
+
+    // 2) anak yang dilaporkan di lebih dari satu bulan
+    const multiBulan = Object.keys(anakSet).filter(a => anakSet[a].length > 1 && D.nama[a] !== '(tanpa nama)').sort(urutNama);
+
+    // 3) kemungkinan anak yang sama ditulis berbeda
+    const ids = Object.keys(anakSet).map(Number);
+    const mirip = [];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = normNama(D.nama[ids[i]]), b = normNama(D.nama[ids[j]]);
+        if (D.nama[ids[i]] === '(tanpa nama)' || D.nama[ids[j]] === '(tanpa nama)') continue;
+        if (a.length < 5 || b.length < 5) continue;
+        const pendek = a.length <= b.length ? a : b, panjang = a.length <= b.length ? b : a;
+        if (panjang.indexOf(pendek) === 0 || (pendek.length >= 6 && jarak(a, b) <= 2)) mirip.push([ids[i], ids[j]]);
+      }
+    }
+
+    const sel = (t, n) => '<div class="why-sec"><div class="why-h">' + t + (n !== undefined ? '<span class="badge">' + esc(String(n)) + '</span>' : '') + '</div>';
+    let body =
+      '<p class="muted" style="font-size:13px;margin-top:0">Filter: ' + esc([rf.kategori, rf.bulan, rf.tahun].filter(Boolean).join(' · ')) + '</p>' +
+      '<div class="why-flow">' +
+      '<div><b>' + App.fmtNum(semua.length) + '</b><small>isian form masuk</small></div><i>' + icon('chevR', 'sm') + '</i>' +
+      '<div class="' + (nDiabaikan ? 'warn' : '') + '"><b>−' + App.fmtNum(nDiabaikan) + '</b><small>isian dobel diabaikan</small></div><i>' + icon('chevR', 'sm') + '</i>' +
+      '<div class="pri"><b>' + App.fmtNum(hitung.length) + '</b><small>laporan dihitung</small></div><i>' + icon('chevR', 'sm') + '</i>' +
+      '<div class="pri"><b>' + App.fmtNum(nAnak) + '</b><small>anak berbeda</small></div></div>';
+
+    const tanpaNama = hitung.filter(r => D.nama[r[5]] === '(tanpa nama)');
+    if (!nDiabaikan && !multiBulan.length && !mirip.length && !tanpaNama.length) {
+      body += '<div class="notice ok" style="margin-top:14px">' + icon('checkCircle') + '<div>Setiap anak dilaporkan <b>tepat satu kali</b> dalam filter ini dan tidak ada isian dobel, sehingga jumlah Laporan sama dengan jumlah Anak.</div></div>';
+    }
+    if (grupDobel.length) {
+      body += sel('Isian dobel di bulan yang sama', grupDobel.length + ' anak') +
+        '<p class="why-p">Orang tua mengirim form lebih dari sekali untuk anak & bulan yang sama. Yang dihitung hanya <b>isian terakhir</b>; isian sebelumnya diabaikan. Admin dapat menghapus baris lama di spreadsheet bila memang salah kirim.</p>' +
+        grupDobel.map(g => '<div class="why-item"><div class="why-nm"><b>' + esc(D.nama[g.keep[5]]) + '</b><span class="muted">' + esc(bln(g.keep)) + ' · ' + g.list.length + '× kirim</span></div><ol class="why-ol">' +
+          g.list.map(r => {
+            const pakai = r === g.keep;
+            const beda = r[0] !== g.keep[0] ? ' <span class="badge warn">kategori ' + esc(D.kat[r[0]]) + '</span>' : '';
+            return '<li class="' + (pakai ? 'on' : '') + '"><span>' + (r[12] ? esc(fmtTs(r[12])) : 'Isian ke-' + (g.list.indexOf(r) + 1)) + (r[13] ? ' <small class="muted">· baris ' + r[13] + ' di sheet</small>' : '') +
+              (r[11] ? ' <small class="muted">· ' + esc(r[11]) + '</small>' : '') + beda + '</span>' + (pakai ? '<span class="badge ok">dihitung</span>' : '<span class="badge">diabaikan</span>') + '</li>';
+          }).join('') + '</ol></div>').join('') + '</div>';
+    }
+    if (multiBulan.length) {
+      body += sel('Dilaporkan di beberapa bulan', multiBulan.length + ' anak') +
+        '<p class="why-p">Wajar bila filter mencakup lebih dari satu bulan: anak yang rutin dilaporkan tiap bulan terhitung beberapa laporan, tetapi tetap <b>1 anak</b>. Pilih satu bulan di filter agar Laporan = Anak.</p>' +
+        '<div class="why-grid">' + multiBulan.map(a => {
+          const list = anakSet[a].slice().sort((x, y) => (x[1] * 100 + x[2]) - (y[1] * 100 + y[2]));
+          return '<div class="why-item"><div class="why-nm"><b>' + esc(D.nama[a]) + '</b><span class="muted">' + list.length + ' laporan</span></div><div class="why-chips">' +
+            list.map(r => '<span>' + (r[2] ? BLN3[r[2] - 1] + ' ' + String(r[1]).slice(2) : '—') + '</span>').join('') + '</div></div>';
+        }).join('') + '</div></div>';
+    }
+    if (tanpaNama.length) {
+      body += sel('Nama anak tidak diisi', tanpaNama.length + ' laporan') +
+        '<p class="why-p">Isian ini tidak mencantumkan nama anak, sehingga semuanya terhitung sebagai <b>1 anak</b> "(tanpa nama)". Lengkapi nama anak di spreadsheet bila diketahui.</p>' +
+        tanpaNama.map(r => '<div class="why-item"><div class="why-nm"><b>' + esc(bln(r)) + '</b><span class="muted">' + esc(D.kat[r[0]]) + (r[11] ? ' · ortu: ' + esc(r[11]) : '') + (r[13] ? ' · baris ' + r[13] + ' di sheet' : '') + '</span></div></div>').join('') + '</div>';
+    }
+    if (mirip.length) {
+      body += sel('Perlu dicek: nama mirip', mirip.length + ' pasang') +
+        '<p class="why-p">Nama-nama ini dihitung sebagai anak <b>berbeda</b>, tetapi penulisannya mirip. Bila sebenarnya anak yang sama, samakan penulisan namanya di spreadsheet agar jumlah Anak tepat.</p>' +
+        '<div class="why-grid">' + mirip.map(p => '<div class="why-item why-pair">' + p.map(a => {
+          const list = anakSet[a].slice().sort((x, y) => (x[1] * 100 + x[2]) - (y[1] * 100 + y[2]));
+          const ortu = list.map(r => r[11]).filter((x, i, arr) => x && arr.indexOf(x) === i).join(', ');
+          return '<div><b>' + esc(D.nama[a]) + '</b>' + (ortu ? '<small class="muted"> · ortu: ' + esc(ortu) + '</small>' : '') + '<div class="why-chips">' +
+            list.map(r => '<span>' + (r[2] ? BLN3[r[2] - 1] + ' ' + String(r[1]).slice(2) : '—') + '</span>').join('') + '</div></div>';
+        }).join('<span class="why-eq">≈</span>') + '</div>').join('') + '</div></div>';
+    }
+    App.modal({ title: 'Rincian ' + D.kelompok[kel] + ' — Laporan & Anak', wide: true, body: body, foot: '<button class="btn btn-primary" data-x>Mengerti</button>' });
+  }
+
   // ───────────────────────── Data rinci → teks WhatsApp & PDF (v1.5) ─────────────────────────
   /** keterangan filter aktif: {bulan, tahun, kelompok, kategori} dalam kata-kata */
   function ringkasFilter(D, f, list) {
@@ -128,6 +265,7 @@
     /** el: wadah; D: data dari server; opt: { admin, onRefresh } */
     mount(el, D, opt) {
       opt = opt || {};
+      const P = siapkan(D);   // v1.5.1: isian terakhir per anak per bulan
       const f = bacaFilter();
       const ab = {}; String(D.abjad || '').split('').forEach((c, i) => { ab[c] = i; });
       const kat = D.kat || [];
@@ -137,7 +275,7 @@
       App.onLeave(hapusGrafik);
 
       // pilihan filter dibuat dari data
-      const hit = (idx) => { const m = {}; D.rows.forEach(r => { m[r[idx]] = (m[r[idx]] || 0) + 1; }); return m; };
+      const hit = (idx) => { const m = {}; P.rows.forEach(r => { m[r[idx]] = (m[r[idx]] || 0) + 1; }); return m; };
       const hT = hit(1), hB = hit(2), hK = hit(3);
       const oTahun = Object.keys(hT).filter(t => +t).map(Number).sort((a, b) => b - a).map(t => ({ v: t, t: String(t), n: hT[t] }));
       const oBulan = Object.keys(hB).filter(b => +b).map(Number).sort((a, b) => a - b).map(b => ({ v: b, t: BLN[b - 1], n: hB[b] }));
@@ -147,7 +285,7 @@
       const now = App.nowWita();
       el.innerHTML =
         '<section class="mon-head"><div class="grow"><div class="kick">' + icon('heart', 'sm') + ' Monitoring Bulanan</div><h1>Dashboard Monitoring &amp; Bimbingan Akhlaq</h1>' +
-        '<p>Bimbingan dan monitoring orang tua generus · ' + App.fmtNum(D.rows.length) + ' laporan terekam · ' + esc(App.fmtTanggal(App.today())) + '</p>' +
+        '<p>Bimbingan dan monitoring orang tua generus · ' + App.fmtNum(P.rows.length) + ' laporan terekam' + (P.nBuang ? ' (' + App.fmtNum(P.nBuang) + ' isian dobel diabaikan)' : '') + ' · ' + esc(App.fmtTanggal(App.today())) + '</p>' +
         '<div class="row wrap" style="gap:6px;margin-top:10px"><span class="badge ok">' + icon('cloudCheck', 'sm') + ' Data dari Google Sheets · diperbarui ' + esc(App.fmtWaktu(D.dibuat, { noYear: true })) + '</span>' +
         '</div></div>' +
         '<div class="mon-org"><b>PPG Kutai Timur</b><small>' + now.y + '</small>' + (opt.onRefresh ? '<button class="btn btn-soft btn-sm" data-refresh style="margin-top:8px">' + icon('refresh', 'sm') + ' Muat ulang data</button>' : '') +
@@ -186,10 +324,11 @@
       let tabelBatas = 200, cari = '';
       const hitung = () => {
         hapusGrafik();
-        const rows = D.rows.filter(r => lolos(r));
+        const rows = P.rows.filter(r => lolos(r));
+        const nMasuk = P.nBuang ? P.semua.filter(r => lolos(r)).length : rows.length;
         // ── ringkasan
-        const anak = new Set(), kelA = new Set(); let L = 0, P = 0;
-        rows.forEach(r => { anak.add(r[5]); kelA.add(r[3]); if (r[4] === 1) L++; else if (r[4] === 2) P++; });
+        const anak = new Set(), kelA = new Set(); let L = 0, Pr = 0;
+        rows.forEach(r => { anak.add(r[5]); kelA.add(r[3]); if (r[4] === 1) L++; else if (r[4] === 2) Pr++; });
         // ── bimbingan orang tua
         const bimb = [['Bimbingan Ibadah', 6], ['Bimbingan Akhlak / Adab', 7], ['Bimbingan Kemandirian', 8]].map(b => {
           const c = [0, 0, 0, 0]; rows.forEach(r => { c[r[b[1]]]++; });
@@ -199,16 +338,19 @@
         // ── rekap per kelompok
         const perKel = {};
         rows.forEach(r => {
-          const k = perKel[r[3]] || (perKel[r[3]] = { n: 0, anak: new Set(), s: [0, 0, 0], t: [0, 0, 0] });
+          const k = perKel[r[3]] || (perKel[r[3]] = { i: r[3], n: 0, anak: new Set(), s: [0, 0, 0], t: [0, 0, 0] });
           k.n++; k.anak.add(r[5]);
           [6, 7, 8].forEach((c, i) => { if (r[c]) { k.t[i]++; if (r[c] === 1) k.s[i]++; } });
         });
+        const dobelKel = {};
+        if (P.nBuang) P.semua.forEach(r => { if (lolos(r)) dobelKel[r[3]] = (dobelKel[r[3]] || 0) + 1; });
+        Object.keys(dobelKel).forEach(k => { dobelKel[k] -= perKel[k] ? perKel[k].n : 0; if (dobelKel[k] <= 0) delete dobelKel[k]; });
         const kelRows = Object.keys(perKel).map(i => Object.assign({ nama: D.kelompok[i] }, perKel[i])).sort((a, b) => b.n - a.n);
 
         isi.innerHTML =
           '<div class="mon-sum">' +
-          [['file', 'Laporan Masuk', App.fmtNum(rows.length), 'baris laporan orang tua'], ['users', 'Anak Terpantau', App.fmtNum(anak.size), 'nama dinormalkan per kelompok'],
-            ['user', 'Laki-laki / Perempuan', App.fmtNum(L) + ' <small>/</small> ' + App.fmtNum(P), pct(L, L + P) + '% · ' + pct(P, L + P) + '%'], ['building', 'Kelompok Aktif', App.fmtNum(kelA.size), 'mengirim laporan']]
+          [['file', 'Laporan Masuk', App.fmtNum(rows.length), nMasuk > rows.length ? 'isian terakhir per anak per bulan · ' + App.fmtNum(nMasuk - rows.length) + ' dobel diabaikan' : 'isian terakhir per anak per bulan'], ['users', 'Anak Terpantau', App.fmtNum(anak.size), 'nama dinormalkan per kelompok'],
+            ['user', 'Laki-laki / Perempuan', App.fmtNum(L) + ' <small>/</small> ' + App.fmtNum(Pr), pct(L, L + Pr) + '% · ' + pct(Pr, L + Pr) + '%'], ['building', 'Kelompok Aktif', App.fmtNum(kelA.size), 'mengirim laporan']]
             .map(x => '<div class="stat"><div class="lbl">' + x[1] + icon(x[0], 'sm') + '</div><div class="val">' + x[2] + '</div><div class="sub">' + x[3] + '</div></div>').join('') + '</div>' +
 
           '<div class="grid-2" style="margin-top:16px">' +
@@ -221,15 +363,18 @@
           '<section class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">' + icon('listCheck') + ' Persentase Jawaban per Pertanyaan</div><div class="card-sub">' +
           (f.kat >= 0 ? esc(kat[f.kat]) + ' · ' + App.fmtNum(rows.length) + ' laporan' : 'Pilih satu kategori usia') + '</div></div></div>' + tanyaHtml(rows) + '</section>' +
 
-          '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px"><div><div class="card-title">' + icon('users') + ' Rekap per Kelompok</div><div class="card-sub">% bimbingan sesuai tema PPG (dari isian terisi)</div></div></div>' +
+          '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px"><div><div class="card-title">' + icon('users') + ' Rekap per Kelompok</div><div class="card-sub">% bimbingan sesuai tema PPG (dari isian terisi) · klik angka Laporan / Anak untuk melihat rinciannya</div></div></div>' +
           (kelRows.length ? '<div class="tbl-scroll"><table class="tbl mon-tbl"><thead><tr><th>Kelompok</th><th class="r">Laporan</th><th class="r">Anak</th><th class="r">Ibadah</th><th class="r">Akhlak</th><th class="r">Mandiri</th></tr></thead><tbody>' +
-            kelRows.map(k => '<tr><td><b>' + esc(k.nama) + '</b></td><td class="r num">' + App.fmtNum(k.n) + '</td><td class="r num">' + App.fmtNum(k.anak.size) + '</td>' +
-              k.s.map((s, i) => { const p = pct(s, k.t[i]); return '<td class="r num"><span class="pctc" style="--p:' + p + '%">' + (k.t[i] ? p + '%' : '—') + '</span></td>'; }).join('') + '</tr>').join('') + '</tbody></table></div>' : '<div class="empty">Tidak ada data</div>') + '</section>' +
+            kelRows.map(k => { const dob = dobelKel[k.i] || 0; const beda = dob || k.n !== k.anak.size; return '<tr><td><b>' + esc(k.nama) + '</b></td>' +
+              '<td class="r num"><button class="why-btn' + (beda ? ' beda' : '') + '" data-why="' + k.i + '" title="Lihat rincian laporan & anak">' + (dob ? '<span class="why-dob">' + dob + ' dobel</span>' : '') + App.fmtNum(k.n) + '</button></td>' +
+              '<td class="r num"><button class="why-btn' + (beda ? ' beda' : '') + '" data-why="' + k.i + '" title="Lihat rincian laporan & anak">' + App.fmtNum(k.anak.size) + '</button></td>' +
+              k.s.map((s, i) => { const p = pct(s, k.t[i]); return '<td class="r num"><span class="pctc" style="--p:' + p + '%">' + (k.t[i] ? p + '%' : '—') + '</span></td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">Tidak ada data</div>') + '</section>' +
 
           (D.nama ? '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px;flex-wrap:wrap;gap:10px"><div><div class="card-title">' + icon('file') + ' Data Rinci</div><div class="card-sub" data-rinci-n></div></div>' +
             '<div class="rinci-act"><div class="input-wrap" style="min-width:200px;flex:1"><input class="input" data-cari placeholder="Cari nama anak / pelapor…" value="' + esc(cari) + '" style="min-height:40px;padding-left:38px"><span style="position:absolute;left:11px;top:10px;color:var(--muted)">' + icon('search', 'sm') + '</span></div>' +
             '<button class="btn btn-soft btn-sm" data-pdfr>' + icon('download', 'sm') + ' Unduh PDF</button><button class="btn btn-wa btn-sm" data-wa>' + icon('message', 'sm') + ' Teks WA</button></div></div><div data-rinci></div></section>' : '');
 
+        isi.querySelectorAll('[data-why]').forEach(b => { b.onclick = () => bukaAlasan(D, P, +b.getAttribute('data-why'), lolos, f); });
         if (D.nama) rinci(rows);
         grafik();
       };
@@ -273,7 +418,7 @@
         if (!c1 || !c1.isConnected) return;
         // tren: abaikan filter bulan
         const per = {};
-        D.rows.forEach(r => {
+        P.rows.forEach(r => {
           if (!r[1] || !r[2] || !lolos(r, true)) return;
           const k = r[1] * 100 + r[2];
           const o = per[k] || (per[k] = { n: 0, s: [0, 0, 0], t: [0, 0, 0] });

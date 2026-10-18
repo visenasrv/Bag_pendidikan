@@ -5,17 +5,47 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.2.0.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.5.1.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.2.0** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.5.1** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.5.0 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.5.1 (untuk aplikasi yang sudah berjalan)
 
-v1.5.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah dengan `Kode.gs` v1.5.0 dan `musyawaroh-pelaporan-update-v1.5.0.zip`. Jika Anda masih di v1.3.x, langkah ini sudah mencakup semua isi v1.4.0.
+v1.5.1 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah dengan `Kode.gs` v1.5.1 dan `musyawaroh-pelaporan-update-v1.5.1.zip`. Jika Anda masih di versi lebih lama, langkah ini sudah mencakup semua isi v1.5.0 dan v1.4.0.
+
+**Yang baru di v1.5.1 — Dashboard Monitoring Akhlaq**
+1. **Hanya isian terakhir per anak per bulan yang dihitung.** Bila orang tua mengirim form lebih dari sekali untuk anak dan bulan yang sama (misalnya tombol kirim tertekan berulang), isian yang lebih lama diabaikan di semua angka: kartu ringkasan, grafik, persentase bimbingan, 21 pertanyaan, rekap per kelompok, data rinci, PDF, dan teks WA.
+   - Isian **tanpa nama anak** tidak digabung, karena bisa jadi anak yang berbeda.
+   - Data di spreadsheet **tidak diubah sama sekali**; penyaringan hanya terjadi saat ditampilkan.
+2. **Rekap per Kelompok:** angka **Laporan** dan **Anak** bisa diklik. Muncul rincian kenapa jumlahnya berbeda:
+   - alur hitungan: isian form masuk → isian dobel diabaikan → laporan dihitung → anak berbeda;
+   - **Isian dobel di bulan yang sama:** nama anak, waktu tiap kiriman, **nomor baris di sheet**, pelapor, mana yang dihitung dan mana yang diabaikan;
+   - **Dilaporkan di beberapa bulan:** anak yang muncul di lebih dari satu bulan (wajar bila filter mencakup beberapa bulan);
+   - **Nama anak tidak diisi;**
+   - **Perlu dicek: nama mirip** — misalnya "Azkha Aedil Fitrawan" dan "Azka Aedil Fitrawan". Bila sebenarnya anak yang sama, samakan penulisannya di spreadsheet agar jumlah Anak tepat.
+   - Kelompok yang punya isian dobel ditandai label kuning **"n dobel"**.
+
+### U1. Backend
+1. Ganti seluruh isi `Kode.gs` dengan **v1.5.1** → **Ctrl + S**.
+2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+
+Backend v1.5.1 menambahkan waktu kirim dan nomor baris sheet pada data monitoring. Tanpa backend baru, aplikasi tetap jalan tetapi memakai urutan baris sheet sebagai patokan "isian terakhir", dan nomor baris tidak tampil.
+
+### U2. Frontend
+1. Salin isi **`musyawaroh-pelaporan-update-v1.5.1.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
+2. `git add .` → `git commit -m "Update v1.5.1"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
+
+---
+
+## Riwayat update sebelumnya
+
+### v1.5.0 — Monitoring: data rinci umum, PDF & teks WA, layar penuh admin
+
+v1.5.0 mengubah **backend dan frontend**. Kerjakan dengan `Kode.gs` v1.5.0 dan `musyawaroh-pelaporan-update-v1.5.0.zip`. Jika Anda masih di v1.3.x, langkah ini sudah mencakup semua isi v1.4.0.
 
 **Yang baru di v1.5.0**
 1. **Perbaikan:** tombol **Keluar** di menu samping admin tidak lagi terpotong di layar pendek atau saat tampilan diperbesar (zoom). Daftar menu kini bisa digulir.
@@ -29,7 +59,7 @@ v1.5.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah deng
    - keduanya mengikuti filter dan pencarian yang aktif;
    - format pesan WA diatur admin di **Pengaturan → Monitoring → Format Teks WhatsApp**.
 
-### Format teks WhatsApp
+#### Format teks WhatsApp
 Bawaan:
 ```
 Assalamu'alaikum Bpk/Ibu, berikut orang tua yang sudah mengisi monitoring {bulan} {tahun}:
@@ -42,17 +72,13 @@ Mohon amal sholih, sekiranya yang belum mengisi dapat segera mengisi. Untuk yang
 - Kode lain yang bisa dipakai: `{bulan} {tahun} {jumlah} {kelompok} {kategori}`. Untuk format baris: `{no} {anak} {pelapor} {kelompok} {kategori} {umur} {lp} {bulan} {tahun}`.
 - Satu anak hanya ditulis sekali walaupun mengisi beberapa bulan. **Pilih satu bulan di filter** agar pesannya tepat.
 
-### U1. Backend
+#### Backend
 1. Ganti seluruh isi `Kode.gs` dengan **v1.5.0** → **Ctrl + S**.
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
-### U2. Frontend
+#### Frontend
 1. Salin isi **`musyawaroh-pelaporan-update-v1.5.0.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
 2. `git add .` → `git commit -m "Update v1.5.0"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
-
----
-
-## Riwayat update sebelumnya
 
 ### v1.4.0 — Monitoring Akhlaq, warna & banner, beranda baru
 v1.4.0 mengubah **backend dan frontend**. Kerjakan **U1** dengan `Kode.gs` v1.4.0, lalu **U2** dengan `musyawaroh-pelaporan-update-v1.4.0.zip`.

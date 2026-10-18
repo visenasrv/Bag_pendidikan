@@ -37,7 +37,7 @@
           '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.5 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.5.1 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
