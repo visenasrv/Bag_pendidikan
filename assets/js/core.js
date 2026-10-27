@@ -202,7 +202,7 @@
   /** Aksi baca: aman diulang otomatis. Aksi lain = tulis → membawa reqId (aman diulang tanpa data ganda). */
   const READ_ACTIONS = {
     ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1, getMonitoring: 1, getMonitoringAdmin: 1, segarkanMonitoring: 1,
-    bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1,
+    bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1, getKehadiran: 1,
   };
   App.isRead = a => !!READ_ACTIONS[a];
   App.reqId = () => App.uuid();
@@ -315,7 +315,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.5.1';
+  App.SERVER_MIN = '1.6.0';
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);
@@ -863,6 +863,63 @@
     dapuan(kid) { return ((Store.data && Store.data.dapuan) || []).filter(d => d.kelompokId === kid).sort((a, b) => a.urutan - b.urutan); },
     set() { return (Store.data && Store.data.pengaturan) || {}; },
     namaKelompok(l) { const k = this.kelompokById(l.KelompokID); return k ? k.nama : l.NamaKelompok; },
+  };
+
+  // ───────────────────────── Daftar hadir: orang yang sama (v1.6) ─────────────────────────
+  /** Nama persis sama (abaikan huruf besar/kecil & spasi) ATAU disinkronkan manual (p.sinkron) = SATU orang.
+   *  Mengembalikan fungsi kunci(pesertaId, nama) → kunci orang. */
+  App.normNama = n => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  App.hadirKunci = function (peserta) {
+    const par = {};
+    const find = x => { if (par[x] === undefined) par[x] = x; let r = x; while (par[r] !== r) r = par[r]; while (par[x] !== r) { const n = par[x]; par[x] = r; x = n; } return r; };
+    const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) par[rb] = ra; };
+    (peserta || []).forEach(p => { uni('p:' + p.id, 'n:' + App.normNama(p.nama)); if (p.sinkron) uni('p:' + p.id, 'g:' + p.sinkron); });
+    return (pid, nama) => (pid && par['p:' + pid] !== undefined ? find('p:' + pid) : find('n:' + App.normNama(nama)));
+  };
+  /** Ringkas kehadiran: rows [{pesertaId,kelompokId,nama,status}] → total orang unik, hadir, izin, persen + per kelompok */
+  App.hadirRingkas = function (rows, kunci) {
+    const orang = {}, kel = {};
+    const nilai = s => (s === 'Hadir' ? 2 : s === 'Izin' ? 1 : 0);
+    rows.forEach(r => {
+      const k = kunci(r.pesertaId, r.nama), v = nilai(r.status);
+      orang[k] = Math.max(orang[k] || 0, v);
+      const g = kel[r.kelompokId] || (kel[r.kelompokId] = { n: 0, h: 0, i: 0 });
+      g.n++; if (v === 2) g.h++; else if (v === 1) g.i++;
+    });
+    const v = Object.keys(orang).map(k => orang[k]);
+    const hadir = v.filter(x => x === 2).length, total = v.length;
+    Object.keys(kel).forEach(k => { kel[k].p = kel[k].n ? Math.round(1000 * kel[k].h / kel[k].n) / 10 : 0; });
+    return { total: total, hadir: hadir, izin: v.filter(x => x === 1).length, belum: v.filter(x => x === 0).length, persen: total ? Math.round(1000 * hadir / total) / 10 : 0, kel: kel };
+  };
+  App.fmtPct = v => (v === null || v === undefined || isNaN(v) ? '—' : (Math.round(v * 10) / 10).toLocaleString('id-ID') + '%');
+
+  // ───────────────────────── Mutu KBM per laporan (v1.6, sama dengan mutu_ di server) ─────────────────────────
+  App.JENJANG_HADIR = ['Caberawit', 'Praremaja', 'Remaja', 'Pranikah', 'Muda-Mudi', 'Tahfidz'];
+  App.JENJANG_MATERI = ['Caberawit', 'Praremaja', 'Remaja'];
+  App.mutu = function (l) {
+    const n = v => (v === '' || v === null || v === undefined || isNaN(Number(v)) ? null : Number(v));
+    const pk = [n(l.Pnk_Hadir1), n(l.Pnk_Hadir2)].filter(v => v !== null);
+    const ada = /^(ada|ya|sudah)/i.test(String(l.Tahfidz_Ada || ''));
+    const t = v => String(v === null || v === undefined ? '' : v).trim().slice(0, 300);
+    return {
+      h: [n(l.Cbr_Hadir), n(l.Prm_Hadir), n(l.Rmj_Hadir), pk.length ? Math.round(10 * pk.reduce((a, b) => a + b, 0) / pk.length) / 10 : null, n(l.MM_Hadir), ada ? n(l.Tahfidz_Hadir) : null],
+      m: [n(l.Cbr_Materi), n(l.Prm_Materi), n(l.Rmj_Materi)],
+      w: [n(l.Jml_Caberawit) || 0, n(l.Jml_Praremaja) || 0, n(l.Jml_Remaja) || 0, n(l.Jml_Pranikah) || 0, n(l.Jml_MudaMudi) || 0, ada ? n(l.Tahfidz_Jml) || 0 : 0],
+      thf: ada ? { jml: n(l.Tahfidz_Jml) || 0, jadwal: t(l.Tahfidz_Jadwal) } : null,
+      mm: [t(l.MM_Minggu1), t(l.MM_Minggu2), t(l.MM_Minggu3), t(l.MM_Minggu4), t(l.MM_Lainnya)],
+    };
+  };
+  /** Rata-rata persen beberapa laporan, ditimbang jumlah peserta jenjangnya (bila bobot 0 semua → rata-rata biasa) */
+  App.rataPct = function (items, key, i, wIdx) {
+    let sw = 0, sv = 0, n = 0, s = 0;
+    items.forEach(it => {
+      const m = it.mutu; if (!m) return;
+      const v = m[key][i]; if (v === null || v === undefined) return;
+      const w = m.w[wIdx === undefined ? i : wIdx] || 0;
+      sw += w; sv += v * w; n++; s += v;
+    });
+    if (!n) return null;
+    return sw ? sv / sw : s / n;
   };
 
   // Periode bersama halaman admin

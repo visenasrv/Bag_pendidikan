@@ -3,10 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Musyawaroh &amp; Pelaporan Bagian Pendidikan</title>
+  <title>Laporan &amp; Evaluasi PPG Desa Sangatta Selatan</title>
   <meta name="description" content="Pelaporan bulanan, notulen, dan daftar hadir musyawaroh Bagian Pendidikan Desa Sangatta Selatan.">
   <meta name="theme-color" content="#064E3B">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23064E3B'/%3E%3Cpath d='M32 12l18 10H14z M18 26v18 M26 26v18 M38 26v18 M46 26v18 M12 50h40' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <!-- PWA: bisa diinstal di HP & laptop (v1.6) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PPG Desa SS">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- Koneksi awal ke server agar permintaan pertama lebih cepat -->
   <link rel="preconnect" href="https://script.google.com">
@@ -17,7 +24,7 @@
   <!-- Font dimuat tanpa memblok tampilan pertama (Prinsip 9) -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="assets/css/style.css?v=1.5.1">
+  <link rel="stylesheet" href="assets/css/style.css?v=1.6.1">
 
   <!-- Terapkan tema sebelum halaman digambar (tanpa kedipan) -->
   <script>
@@ -47,16 +54,17 @@
     <p style="padding:24px;font-family:sans-serif">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</p>
   </noscript>
 
-  <script src="config.js?v=1.5.1"></script>
-  <script src="assets/js/core.js?v=1.5.1" defer></script>
-  <script src="assets/js/schema.js?v=1.5.1" defer></script>
-  <script src="assets/js/pdf.js?v=1.5.1" defer></script>
-  <script src="assets/js/form.js?v=1.5.1" defer></script>
-  <script src="assets/js/dash.js?v=1.5.1" defer></script>
-  <script src="assets/js/public.js?v=1.5.1" defer></script>
-  <script src="assets/js/notulen.js?v=1.5.1" defer></script>
-  <script src="assets/js/monitoring.js?v=1.5.1" defer></script>
+  <script src="config.js?v=1.6.1"></script>
+  <script src="assets/js/core.js?v=1.6.1" defer></script>
+  <script src="assets/js/schema.js?v=1.6.1" defer></script>
+  <script src="assets/js/pdf.js?v=1.6.1" defer></script>
+  <script src="assets/js/form.js?v=1.6.1" defer></script>
+  <script src="assets/js/dash.js?v=1.6.1" defer></script>
+  <script src="assets/js/public.js?v=1.6.1" defer></script>
+  <script src="assets/js/notulen.js?v=1.6.1" defer></script>
+  <script src="assets/js/monitoring.js?v=1.6.1" defer></script>
   <!-- Modul admin (admin, hadir, musyawaroh, pengaturan) dimuat otomatis saat #/admin dibuka -->
-  <script src="assets/js/app.js?v=1.5.1" defer></script>
+  <script src="assets/js/app.js?v=1.6.1" defer></script>
+  <script src="pwa.js" defer></script>
 </body>
 </html>

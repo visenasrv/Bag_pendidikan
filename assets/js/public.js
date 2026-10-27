@@ -67,6 +67,7 @@
       '<div class="sm-bar"><i data-bar style="width:0%"></i></div>' +
       '<div class="sm-list" data-status><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div><div class="skeleton" style="height:36px"></div></div></section>' +
       '<div data-total style="margin-top:16px"></div>' +
+      '<button class="install-card" data-pwa-install hidden><img src="icons/icon-192.png" alt="" width="44" height="44"><span class="grow"><b>Instal aplikasi</b><small>Pasang di HP / laptop agar bisa dibuka langsung dari layar utama</small></span>' + icon('download') + '</button>' +
       '<div class="home-foot"><p>© ' + App.nowWita().y + ' Bagian Pendidikan Desa Sangatta Selatan</p></div>' +
       '</div>');
     bindTop(root);

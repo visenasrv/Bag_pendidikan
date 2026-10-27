@@ -36,8 +36,9 @@
           '<aside class="sidebar"><div class="brand">' + App.logo.html('kiri') + '<div><b>Musyawaroh</b><small>Bagian Pendidikan</small></div></div>' +
           '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
+          '<button class="nav-item" data-pwa-install hidden style="justify-content:center">' + icon('download') + ' Instal Aplikasi</button>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.5.1 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.6 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
@@ -648,8 +649,11 @@
       '<section class="card pdf-card"><span class="ico-tile">' + icon('printer') + '</span><div><b>Gabungan Satu Bulan</b><p class="muted" style="font-size:13px">Halaman ringkasan + laporan tiap kelompok (halaman baru per kelompok).</p></div>' +
       '<div class="fields"><select class="select" data-b2>' + App.bulanOptions(per.bulan) + '</select><select class="select" data-t2>' + App.tahunOptions(per.tahun) + '</select></div>' + kopPick('s2') +
       '<button class="btn btn-primary" data-go2>' + icon('download') + ' Unduh Gabungan</button></section>' +
-      '<section class="card pdf-card accent"><span class="ico-tile">' + icon('book') + '</span><div><b>Gabungan Laporan + Notulen</b><p class="muted" style="font-size:13px">Notulen di halaman awal, lalu rincian laporan per kelompok.</p></div>' +
-      '<button class="btn btn-deep" data-go3>' + icon('download') + ' Unduh Laporan & Notulen</button></section></div>';
+      '<section class="card pdf-card accent"><span class="ico-tile">' + icon('book') + '</span><div><b>Gabungan Laporan + Notulen</b><p class="muted" style="font-size:13px">Notulen di halaman awal, lalu rincian laporan per kelompok, dan daftar hadir di lembar terakhir.</p></div>' +
+      '<button class="btn btn-deep" data-go3>' + icon('download') + ' Unduh Laporan & Notulen</button></section>' +
+      '<section class="card pdf-card"><span class="ico-tile">' + icon('calCheck') + '</span><div><b>Daftar Hadir Musyawaroh</b><p class="muted" style="font-size:13px">Per kelompok lengkap dengan status, keterangan & persentase kehadiran.</p></div>' +
+      '<select class="select" data-h4>' + (riwayatH().length ? riwayatH().map(x => '<option value="' + esc(x.sesiId) + '">' + esc(App.fmtTanggal(x.tanggal)) + ' — ' + esc(x.tempat) + '</option>').join('') : '<option value="">Belum ada sesi kehadiran</option>') + '</select>' +
+      '<button class="btn btn-primary" data-go4>' + icon('download') + ' Unduh Daftar Hadir</button></section></div>';
     const q = s => c.querySelector(s);
     const fillK = () => {
       const ls = B.laporanPeriode(q('[data-b1]').value, q('[data-t1]').value);
@@ -675,8 +679,15 @@
       App.pdf.run(e.currentTarget, () => App.pdf.gabungan(b, t, ls, B.wajib(), null, infoDari('s2')));
     };
     q('[data-go3]').onclick = () => pdfGabunganNotulen();
+    q('[data-go4]').onclick = e => {
+      const id = q('[data-h4]').value;
+      if (!id) { App.toast('Belum ada sesi kehadiran yang tersimpan.', 'warn'); return; }
+      App.pdf.run(e.currentTarget, async () => { const ss = await App.hadirAmbil([id]); if (!ss.length) throw new Error('Sesi kehadiran tidak ditemukan.'); await App.pdf.hadir(ss); });
+    };
     App.idle(() => App.lib('jspdf').catch(() => {}));
   }));
+
+  const riwayatH = () => (Store.data && Store.data.riwayatHadir) || [];
 
   /** Pilihan sesi notulen untuk baris "Tanggal : … Tempat : …" di kop PDF */
   function kopPick(n) {
@@ -694,7 +705,9 @@
       title: 'Pilih isi PDF', wide: true,
       body: '<div class="fields"><div class="field"><label>Bulan laporan</label><select class="select" data-b>' + App.bulanOptions(per.bulan) + '</select></div><div class="field"><label>Tahun</label><select class="select" data-t>' + App.tahunOptions(per.tahun) + '</select></div></div>' +
         '<div class="row between" style="margin-top:18px"><span class="label" style="margin:0">Notulen yang disertakan</span><span><button class="btn btn-ghost btn-xs" data-all>Pilih Semua</button><button class="btn btn-ghost btn-xs" data-none>Kosongkan</button></span></div>' +
-        '<div style="max-height:280px;overflow:auto;margin-top:8px" data-ns>' + (all.length ? all.map(s => '<label class="sesi-item check" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (pre(s) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b> — ' + esc(s.tempat) + ' <span class="muted">(' + esc(App.notulenInfo(s)) + ')</span></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div>',
+        '<div style="max-height:240px;overflow:auto;margin-top:8px" data-ns>' + (all.length ? all.map(s => '<label class="sesi-item check" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (pre(s) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b> — ' + esc(s.tempat) + ' <span class="muted">(' + esc(App.notulenInfo(s)) + ')</span></span></label>').join('') : '<div class="empty">Belum ada notulen.</div>') + '</div>' +
+        '<div class="row between" style="margin-top:18px"><span class="label" style="margin:0">Daftar hadir yang disertakan <span class="muted" style="font-weight:500">(dicetak di lembar terakhir)</span></span></div>' +
+        '<div style="max-height:200px;overflow:auto;margin-top:8px" data-hs>' + (riwayatH().length ? riwayatH().map(s => '<label class="sesi-item check" style="display:flex"><input type="checkbox" value="' + esc(s.sesiId) + '" ' + (pre(s) ? 'checked' : '') + '><span><b>' + esc(App.fmtTanggal(s.tanggal)) + '</b> — ' + esc(s.tempat) + ' <span class="muted">(' + s.hadir + '/' + s.total + ' hadir)</span></span></label>').join('') : '<div class="empty">Belum ada sesi kehadiran.</div>') + '</div>',
       foot: '<button class="btn btn-soft" data-x>Batal</button><button class="btn btn-primary" data-go>' + icon('download') + ' Unduh PDF</button>',
     });
     const cbs = () => Array.from(m.el.querySelectorAll('[data-ns] input'));
@@ -705,8 +718,12 @@
       const ids = cbs().filter(x => x.checked).map(x => x.value);
       const sesi = all.filter(s => ids.indexOf(s.sesiId) >= 0).sort((x, y) => String(x.tanggal).localeCompare(String(y.tanggal)));
       const ls = B.laporanPeriode(b, t);
-      if (!ls.length && !sesi.length) { App.toast('Tidak ada laporan maupun notulen untuk dicetak.', 'warn'); return; }
-      await App.pdf.run(e.currentTarget, () => App.pdf.gabungan(b, t, ls, B.wajib(), sesi));
+      const hids = Array.from(m.el.querySelectorAll('[data-hs] input')).filter(x => x.checked).map(x => x.value);
+      if (!ls.length && !sesi.length && !hids.length) { App.toast('Tidak ada laporan, notulen, maupun daftar hadir untuk dicetak.', 'warn'); return; }
+      await App.pdf.run(e.currentTarget, async () => {
+        const hadir = hids.length ? (await App.hadirAmbil(hids)).sort((x, y) => String(x.tanggal).localeCompare(String(y.tanggal))) : [];
+        await App.pdf.gabungan(b, t, ls, B.wajib(), sesi, undefined, hadir);
+      });
       m.close(true);
     };
   }

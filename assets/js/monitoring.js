@@ -318,8 +318,42 @@
         (abaikanBulan || !f.bulan.length || f.bulan.indexOf(r[2]) >= 0) && (!f.kel.length || f.kel.indexOf(r[3]) >= 0);
 
       const pct = (a, b) => (b ? Math.round(100 * a / b) : 0);
-      const bar = segs => '<div class="sbar">' + segs.filter(s => s.n).map(s => '<i style="width:' + (100 * s.n / segs.reduce((x, y) => x + y.n, 0)) + '%;background:' + s.c + '" title="' + esc(s.t + ': ' + s.n) + '"></i>').join('') + '</div>';
-      const legenda = (segs, tot) => '<ul class="sleg">' + segs.filter(s => s.n).map(s => '<li><span class="dot" style="background:' + s.c + '"></span><span class="t">' + esc(s.t) + '</span><b>' + pct(s.n, tot) + '%</b><small>' + App.fmtNum(s.n) + '</small></li>').join('') + '</ul>';
+      const bar = segs => '<div class="sbar">' + segs.filter(s => s.n).map(s => '<i style="width:' + (100 * s.n / segs.reduce((x, y) => x + y.n, 0)) + '%;background:' + s.c + '"' + (s.k ? ' data-tip="' + s.k + '"' : ' title="' + esc(s.t + ': ' + s.n) + '"') + '></i>').join('') + '</div>';
+      const legenda = (segs, tot) => '<ul class="sleg">' + segs.filter(s => s.n).map(s => '<li' + (s.k ? ' data-tip="' + s.k + '"' : '') + '><span class="dot" style="background:' + s.c + '"></span><span class="t">' + esc(s.t) + '</span><b>' + pct(s.n, tot) + '%</b><small>' + App.fmtNum(s.n) + '</small></li>').join('') + '</ul>';
+      // v1.6: tooltip sebaran umur per jawaban
+      let tipData = {};
+      const tipEl = () => {
+        let t = document.getElementById('mon-tip');
+        if (!t) { t = document.createElement('div'); t.id = 'mon-tip'; t.className = 'mon-tip hidden'; t.setAttribute('role', 'tooltip'); document.body.appendChild(t); }
+        return t;
+      };
+      const tipHide = () => { const t = document.getElementById('mon-tip'); if (t) t.classList.add('hidden'); isi.querySelectorAll('.tip-on').forEach(x => x.classList.remove('tip-on')); };
+      App.onLeave(() => { const t = document.getElementById('mon-tip'); if (t) t.remove(); });
+      const tipShow = (el, ev) => {
+        const d = tipData[el.getAttribute('data-tip')];
+        if (!d) return;
+        const t = tipEl();
+        const umur = Object.keys(d.umur || {}).sort((a, b) => (a === '?') - (b === '?') || a - b);
+        const maks = Math.max.apply(null, umur.map(u => d.umur[u]).concat([1]));
+        t.innerHTML = '<div class="mt-h"><span class="dot" style="background:' + warnaJawab(d.t) + '"></span><b>' + esc(d.t) + '</b></div>' +
+          '<div class="mt-s">' + App.fmtNum(d.n) + ' anak · ' + pct(d.n, d.tot) + '% dari ' + App.fmtNum(d.tot) + '</div>' +
+          '<div class="mt-u">' + umur.map(u => '<div class="mt-r"><span>' + (u === '?' ? 'Umur tak diisi' : 'Umur ' + u + ' th') + '</span><i><b style="width:' + (100 * d.umur[u] / maks) + '%"></b></i><em class="num">' + d.umur[u] + '</em></div>').join('') + '</div>';
+        t.classList.remove('hidden');
+        isi.querySelectorAll('.tip-on').forEach(x => x.classList.remove('tip-on'));
+        el.classList.add('tip-on');
+        const r = el.getBoundingClientRect(), tw = t.offsetWidth, th = t.offsetHeight;
+        let x = ev && ev.clientX ? ev.clientX - tw / 2 : r.left + r.width / 2 - tw / 2;
+        x = Math.max(8, Math.min(innerWidth - tw - 8, x));
+        let y = r.top - th - 10;
+        if (y < 8) y = r.bottom + 10;
+        t.style.left = x + 'px'; t.style.top = y + 'px';
+      };
+      isi.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); if (el && isi.contains(el)) tipShow(el, e); });
+      isi.addEventListener('mousemove', e => { const el = e.target.closest('[data-tip]'); if (el && el.classList.contains('tip-on')) tipShow(el, e); });
+      isi.addEventListener('mouseout', e => { const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) tipHide(); });
+      isi.addEventListener('click', e => { const el = e.target.closest('[data-tip]'); if (el) { e.stopPropagation(); if (el.classList.contains('tip-on')) tipHide(); else tipShow(el, e); } });
+      document.addEventListener('scroll', tipHide, { passive: true, capture: true });
+      App.onLeave(() => document.removeEventListener('scroll', tipHide, { capture: true }));
 
       let tabelBatas = 200, cari = '';
       const hitung = () => {
@@ -386,12 +420,21 @@
         }
         if (!rows.length) return '<div class="empty">Belum ada laporan untuk kombinasi filter ini.</div>';
         const tanya = D.tanya[f.kat] || [];
-        return '<div class="tanya-grid">' + tanya.map((q, qi) => {
-          const m = {};
-          rows.forEach(r => { const ch = r[9].charAt(qi); if (ch && ch !== ' ') m[ch] = (m[ch] || 0) + 1; });
-          const segs = Object.keys(m).map(ch => { const t = D.jawaban[ab[ch]] || 'Lainnya'; return { t: t, n: m[ch], c: warnaJawab(t) }; }).sort((a, b) => b.n - a.n);
-          const tot = segs.reduce((a, b) => a + b.n, 0);
-          return '<div class="tanya"><div class="tq"><span class="no">' + String(qi + 1).padStart(2, '0') + '/21</span>' + esc(q.replace(/^\d+\.\s*/, '')) + '</div>' + (tot ? bar(segs) + legenda(segs, tot) : '<div class="muted" style="font-size:13px">Belum ada jawaban</div>') + '</div>';
+        tipData = {};
+        return '<p class="muted tanya-tip-hint">' + icon('info', 'sm') + ' Arahkan kursor (atau ketuk) bagian grafik / jawaban untuk melihat umur anak yang memilih jawaban itu.</p>' +
+          '<div class="tanya-grid">' + tanya.map((q, qi) => {
+          const m = {}, um = {};
+          rows.forEach(r => {
+            const ch = r[9].charAt(qi);
+            if (!ch || ch === ' ') return;
+            m[ch] = (m[ch] || 0) + 1;
+            const u = parseInt(String(r[10] || '').replace(',', '.'), 10);
+            const k = isNaN(u) ? '?' : u;
+            const o = um[ch] || (um[ch] = {}); o[k] = (o[k] || 0) + 1;
+          });
+          const tot = Object.keys(m).reduce((a, ch) => a + m[ch], 0);
+          const segs = Object.keys(m).map(ch => { const t = D.jawaban[ab[ch]] || 'Lainnya'; tipData[qi + '_' + ch] = { t: t, n: m[ch], tot: tot, umur: um[ch], q: q }; return { t: t, n: m[ch], c: warnaJawab(t), k: qi + '_' + ch }; }).sort((a, b) => b.n - a.n);
+          return '<div class="tanya"><div class="tq"><span class="no">' + String(qi + 1).padStart(2, '0') + '/21</span>' + esc(q.replace(/^\d+\.\s*/, '')) + '</div>' + (tot ? bar(segs) + legenda(segs, tot) : '<div class="muted" style="font-size:14px">Belum ada jawaban</div>') + '</div>';
         }).join('') + '</div>';
       };
 

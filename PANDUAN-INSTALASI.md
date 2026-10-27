@@ -5,17 +5,64 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.5.1.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.6.1.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.5.1** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.6.1** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.5.1 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.6.1 (untuk aplikasi yang sudah berjalan)
 
-v1.5.1 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah dengan `Kode.gs` v1.5.1 dan `musyawaroh-pelaporan-update-v1.5.1.zip`. Jika Anda masih di versi lebih lama, langkah ini sudah mencakup semua isi v1.5.0 dan v1.4.0.
+> **v1.6.1** (hanya frontend): di PDF daftar hadir, status **Belum konfirmasi** kini dicetak **"-"**. Bila sudah memasang v1.6.0, cukup salin isi `musyawaroh-pelaporan-update-v1.6.1.zip` lalu `git push` — `Kode.gs` tidak berubah. Bila masih di versi lebih lama, kerjakan langkah U1–U3 di bawah dengan ZIP v1.6.1.
+
+### Isi v1.6.0
+
+v1.6.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U3 di bawah dengan `Kode.gs` v1.6.0 dan `musyawaroh-pelaporan-update-v1.6.0.zip`. Langkah ini sudah mencakup semua isi versi sebelumnya. Tab **Peserta** otomatis mendapat kolom baru **Sinkron**; data lama tidak berubah.
+
+**Yang baru di v1.6.0**
+1. **Daftar hadir**
+   - **Unduh PDF daftar hadir** sendiri: dari **Riwayat Sesi** (tombol PDF) atau **Unduh PDF → Daftar Hadir Musyawaroh**. Isinya per kelompok: No, Dapuan, Nama, Status, Keterangan (kosong dicetak "-"), plus persentase.
+   - **Digabung** dengan laporan & notulen: **Unduh PDF → Gabungan Laporan + Notulen** kini punya pilihan **Daftar hadir yang disertakan**; daftar hadir dicetak di **lembar terakhir**.
+   - **Riwayat sesi bisa diubah** (tanggal, tempat, Hadir/Izin, keterangan) dan **dihapus**.
+   - **Sinkron Nama** (tombol di halaman Daftar Hadir): admin bisa menyatakan dua nama berbeda adalah orang yang sama (mis. "Pak Fauzi" di Kampung Tengah = "Ahmad Fauzi" di Arrosyid). Nama yang ditulis **persis sama** tetap tersinkron otomatis. Orang yang tersinkron statusnya ikut berubah bersama dan **dihitung 1 orang**. Ada juga saran nama mirip dan tombol lepas sinkron.
+   - **Persentase kehadiran per kelompok** (peserta hadir ÷ peserta terdaftar di kelompok itu) di kepala tiap kelompok, dan **persentase keseluruhan** (orang tersinkron dihitung 1) di bar bawah, riwayat, dan PDF.
+2. **Aplikasi bisa diinstal** di HP & laptop dengan ikon PPG · Desa · SS (lihat **Cara memasang aplikasi** di bawah). Terbuka lebih cepat, tetap tampil saat sinyal hilang, dan ikut ter-update otomatis (muncul tulisan **Versi baru tersedia → Muat ulang**).
+3. **Dashboard (umum & admin)**:
+   - **Persentase kehadiran per jenjang**: Caberawit, Praremaja, Remaja, Pranikah (rata-rata sambung 1 & 2), Muda-Mudi, Tahfidz.
+   - **Materi tersampaikan**: Caberawit, Praremaja, Remaja.
+   - Angka gabungan semua kelompok = rata-rata **ditimbang jumlah peserta** jenjangnya. Warna: hijau ≥ 80%, kuning 60–79%, merah < 60%.
+   - Tabel **Kehadiran & Materi per Kelompok**.
+   - **Kelas Tahfidz**: kelompok yang punya kelas tahfidz, jumlah peserta, jadwal, dan % kehadiran.
+   - **Kegiatan Muda-Mudi**: kegiatan Minggu 1–4 (+ lainnya) per kelompok, jumlah & % kehadiran.
+4. **Monitoring Akhlaq → Persentase Jawaban per Pertanyaan**: tulisan lebih besar; arahkan kursor (atau ketuk di HP) pada bagian grafik / jawaban untuk melihat **sebaran umur** anak yang memilih jawaban itu.
+
+### U1. Backend
+1. Ganti seluruh isi `Kode.gs` dengan **v1.6.0** → **Ctrl + S**.
+2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+
+### U2. Frontend
+1. Salin isi **`musyawaroh-pelaporan-update-v1.6.1.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**. File baru: `manifest.webmanifest`, `sw.js`, `pwa.js`, `offline.html`, dan folder `icons/`.
+2. `git add .` → `git commit -m "Update v1.6.0"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
+
+### U3. Update berikutnya (penting sejak aplikasi bisa diinstal)
+Aplikasi yang sudah terinstal menyimpan tampilan di HP. Setiap kali file frontend diubah, **naikkan angka versi** di `sw.js` (`const VERSION = 'ppgss-v1.6.0'`) dan semua `?v=1.6.0` di `index.html` & `sw.js` — ZIP update dari saya selalu sudah melakukannya. Tanpa itu, HP pengguna tetap memakai tampilan lama.
+
+### Cara memasang aplikasi (bagikan ke pengguna)
+Alamat: **https://visenasrv.github.io/Bag_pendidikan**
+- **Android**: buka alamat di **Chrome** (bukan dari dalam WhatsApp — ketuk ⋮ → *Buka di Chrome*). Ketuk **Instal aplikasi** di beranda, atau menu **⋮ → Instal aplikasi / Tambahkan ke layar utama**.
+- **iPhone / iPad**: buka di **Safari** → tombol **Bagikan** (kotak panah ke atas) → **Tambahkan ke Layar Utama** → **Tambah**. Admin perlu masuk sekali lagi di aplikasi terpasang (penyimpanannya terpisah dari Safari).
+- **Laptop (Chrome/Edge)**: klik ikon **Instal** di ujung kanan bilah alamat, atau tombol **Instal aplikasi** di beranda / menu admin.
+- Bila muncul **Versi baru tersedia**, ketuk **Muat ulang**. Untuk menghapus: tekan lama ikonnya → **Hapus / Copot pemasangan**.
+
+---
+
+## Riwayat update sebelumnya
+
+### v1.5.1 — Monitoring: isian terakhir per anak per bulan
+
+v1.5.1 mengubah **backend dan frontend**. Kerjakan dengan `Kode.gs` v1.5.1 dan `musyawaroh-pelaporan-update-v1.5.1.zip`. Jika Anda masih di versi lebih lama, langkah ini sudah mencakup semua isi v1.5.0 dan v1.4.0.
 
 **Yang baru di v1.5.1 — Dashboard Monitoring Akhlaq**
 1. **Hanya isian terakhir per anak per bulan yang dihitung.** Bila orang tua mengirim form lebih dari sekali untuk anak dan bulan yang sama (misalnya tombol kirim tertekan berulang), isian yang lebih lama diabaikan di semua angka: kartu ringkasan, grafik, persentase bimbingan, 21 pertanyaan, rekap per kelompok, data rinci, PDF, dan teks WA.
@@ -29,19 +76,15 @@ v1.5.1 mengubah **backend dan frontend**. Kerjakan langkah U1–U2 di bawah deng
    - **Perlu dicek: nama mirip** — misalnya "Azkha Aedil Fitrawan" dan "Azka Aedil Fitrawan". Bila sebenarnya anak yang sama, samakan penulisannya di spreadsheet agar jumlah Anak tepat.
    - Kelompok yang punya isian dobel ditandai label kuning **"n dobel"**.
 
-### U1. Backend
+#### Backend
 1. Ganti seluruh isi `Kode.gs` dengan **v1.5.1** → **Ctrl + S**.
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
 Backend v1.5.1 menambahkan waktu kirim dan nomor baris sheet pada data monitoring. Tanpa backend baru, aplikasi tetap jalan tetapi memakai urutan baris sheet sebagai patokan "isian terakhir", dan nomor baris tidak tampil.
 
-### U2. Frontend
+#### Frontend
 1. Salin isi **`musyawaroh-pelaporan-update-v1.5.1.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
 2. `git add .` → `git commit -m "Update v1.5.1"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
-
----
-
-## Riwayat update sebelumnya
 
 ### v1.5.0 — Monitoring: data rinci umum, PDF & teks WA, layar penuh admin
 

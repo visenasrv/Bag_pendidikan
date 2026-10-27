@@ -509,6 +509,78 @@
     });
   }
 
+  // ───────────────────────── Daftar hadir (v1.6) ─────────────────────────
+  /** Ambil isi lengkap sesi kehadiran dari server (dengan cache di memori) */
+  const HADIR = {};
+  App.hadirAmbil = async function (ids, fresh) {
+    const perlu = ids.filter(id => fresh || !HADIR[id]);
+    if (perlu.length) {
+      const res = await App.api.admin('getKehadiran', { sesiIds: perlu });
+      (res || []).forEach(x => { HADIR[x.sesiId] = x; });
+    }
+    return ids.map(id => HADIR[id]).filter(Boolean);
+  };
+  App.hadirLupa = id => { delete HADIR[id]; };
+  App.hadirSimpanLokal = sesi => { HADIR[sesi.sesiId] = sesi; };
+
+  function hadirBody(w, sesi) {
+    const B = App.B;
+    const kunci = App.hadirKunci(B ? B.peserta() : []);
+    const h = App.hadirRingkas(sesi.rows, kunci);
+    const d = w.doc, M = w.M, lebar = w.W - 2 * M;
+    w.title('DAFTAR HADIR MUSYAWAROH', App.fmtTanggal(sesi.tanggal) + ' · ' + (sesi.tempat || '-'));
+    w.statBoxes([{ l: 'Peserta (orang)', v: h.total, hero: true }, { l: 'Hadir', v: h.hadir }, { l: 'Izin', v: h.izin }, { l: 'Belum Konfirmasi', v: h.belum }, { l: 'Kehadiran', v: App.fmtPct(h.persen) }]);
+    const urut = B ? B.kelompok().map(k => k.id) : [];
+    const kelIds = Array.from(new Set(sesi.rows.map(r => r.kelompokId))).sort((a, b) => (urut.indexOf(a) + 1 || 999) - (urut.indexOf(b) + 1 || 999));
+    const namaK = id => { const k = B && B.kelompokById(id); return k ? k.nama : ((sesi.rows.find(r => r.kelompokId === id) || {}).namaKelompok || '-'); };
+    const cols = [['No', 10], ['Dapuan', 40], ['Nama', 54], ['Status', 27], ['Keterangan', 0]];
+    cols[4][1] = lebar - cols.slice(0, 4).reduce((a, c) => a + c[1], 0);
+    const kepala = () => {
+      w.fill(C.deep); d.rect(M, w.y, lebar, 7, 'F');
+      d.setTextColor(255, 255, 255); w.font('bold', 8.2);
+      let x = M + 1.8; cols.forEach(c => { d.text(c[0].toUpperCase(), x, w.y + 4.8); x += c[1]; });
+      w.y += 7;
+    };
+    kelIds.forEach(kid => {
+      const rows = sesi.rows.filter(r => r.kelompokId === kid).sort((a, b) => (a.no || 0) - (b.no || 0));
+      const g = h.kel[kid] || { n: 0, h: 0, p: 0 };
+      w.ensure(26);
+      w.y += 2;
+      w.fill(C.tint); d.roundedRect(M, w.y, lebar, 8, 1.5, 1.5, 'F');
+      w.color(C.deep); w.font('bold', 10.5); d.text(namaK(kid), M + 3, w.y + 5.5);
+      w.font('normal', 9); d.text('Hadir ' + g.h + ' dari ' + g.n + ' · ' + App.fmtPct(g.p), w.W - M - 3, w.y + 5.5, { align: 'right' });
+      w.y += 10;
+      kepala();
+      rows.forEach((r, i) => {
+        const st = r.status === 'Hadir' || r.status === 'Izin' ? r.status : '-';
+        w.font('bold', 8.8); const nm = d.splitTextToSize(r.nama || '-', cols[2][1] - 3);
+        w.font('normal', 8.8);
+        const dp = d.splitTextToSize(r.dapuan || '-', cols[1][1] - 3);
+        const kt = d.splitTextToSize(String(r.ket || '').trim() || '-', cols[4][1] - 3);
+        const n = Math.max(nm.length, dp.length, kt.length);
+        const rh = n * 4 + 2.6;
+        if (w.y + rh > w.H - 18) { w.newPage(); kepala(); }
+        if (i % 2) { w.fill([247, 250, 249]); d.rect(M, w.y, lebar, rh, 'F'); }
+        let x = M + 1.8;
+        const y = w.y + 4.2;
+        w.font('normal', 8.8); w.color(C.text);
+        d.text(String(r.no || i + 1), x, y); x += cols[0][1];
+        d.text(dp, x, y, { lineHeightFactor: 1.3 }); x += cols[1][1];
+        w.font('bold', 8.8); d.text(nm, x, y, { lineHeightFactor: 1.3 }); x += cols[2][1];
+        w.font('bold', 8.4);
+        if (st === 'Hadir') w.color(C.ok); else if (st === 'Izin') w.color(C.warn); else w.color(C.muted);
+        d.text(st, x, y); x += cols[3][1];
+        w.font('normal', 8.8); w.color(C.text);
+        d.text(kt, x, y, { lineHeightFactor: 1.3 });
+        w.y += rh;
+        w.draw(C.line); d.setLineWidth(0.15); d.line(M, w.y, M + lebar, w.y);
+      });
+      w.y += 3;
+    });
+    w.ensure(10);
+    w.para('Persentase per kelompok = peserta hadir ÷ peserta terdaftar di kelompok itu. Persentase keseluruhan menghitung orang yang sama di beberapa kelompok (nama sama atau disinkronkan) sebagai 1 orang.', 8.5, C.muted);
+  }
+
   // ───────────────────────── API publik pdf ─────────────────────────
   /** info = {tanggal, tempat} untuk kop; bila tidak diberikan → sesi musyawaroh periode laporan (admin) */
   const infoLaporan = (l, info) => (info !== undefined ? info : (App.B && App.B.notulen ? App.kopInfo(App.sesiUntukPeriode(l.Bulan, l.Tahun)) : null));
@@ -535,7 +607,7 @@
     w.save('Bukti Laporan ' + namaKel(l) + ' ' + App.periode(l.Bulan, l.Tahun));
   };
 
-  App.pdf.gabungan = async function (b, t, list, wajib, sessions, info) {
+  App.pdf.gabungan = async function (b, t, list, wajib, sessions, info, hadir) {
     const w = new Writer(await jsPDFCtor(), info !== undefined ? info : (sessions && sessions.length ? App.kopInfo(sessions) : App.kopInfo(App.sesiUntukPeriode(b, t))));
     w.kop();
     if (sessions && sessions.length) {
@@ -547,7 +619,15 @@
     const urut = wajib.map(k => list.find(l => l.KelompokID === k.id)).filter(Boolean)
       .concat(list.filter(l => !wajib.some(k => k.id === l.KelompokID)));
     urut.forEach(l => { w.newPage(); w.kop(); laporanBody(w, l); });
+    // v1.6: daftar hadir di lembar terakhir
+    (hadir || []).forEach(h => { w.newPage(); w.info = App.kopInfo(h); w.kop(); hadirBody(w, h); });
     w.save((sessions && sessions.length ? 'Laporan & Notulen ' : 'Rekap Laporan ') + App.periode(b, t));
+  };
+
+  App.pdf.hadir = async function (sessions) {
+    const w = new Writer(await jsPDFCtor(), App.kopInfo(sessions[0]));
+    sessions.forEach((h, i) => { if (i) { w.newPage(); w.info = App.kopInfo(h); } w.kop(); hadirBody(w, h); });
+    w.save('Daftar Hadir ' + (sessions.length === 1 ? App.fmtTanggal(sessions[0].tanggal) : sessions.length + ' sesi'));
   };
 
   App.pdf.notulen = async function (sessions) {

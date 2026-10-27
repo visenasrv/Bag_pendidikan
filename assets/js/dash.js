@@ -33,7 +33,7 @@
           bulan: b, terkunci: !!ku.terkunci, tutupBaru: !!ku.tutupBaru,
           items: semua.filter(l => +l.Bulan === b).map(l => ({
             id: l.KelompokID, nama: B.namaKelompok(l), wajib: wajib.some(k => k.id === l.KelompokID),
-            waktuKirim: l.WaktuKirim, waktuUbah: l.WaktuUbah, rekap: App.rekap([l]), lapId: l.ID,
+            waktuKirim: l.WaktuKirim, waktuUbah: l.WaktuUbah, rekap: App.rekap([l]), mutu: App.mutu(l), lapId: l.ID,
           })),
         });
       }
@@ -103,6 +103,8 @@
         .map(x => '<div class="stat"><div class="lbl">' + x[0] + icon(x[2], 'sm') + '</div><div class="val">' + App.fmtNum(x[1]) + '<small>orang</small></div><div class="sub">' + x[3] + '</div></div>').join('') +
       '</div></div>' +
 
+      mutuHtml(m, items, kel, periode) +
+
       '<div class="grid-2" style="margin-top:16px">' +
       '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('bar') + ' Jumlah Generus per Kelompok</div><div class="card-sub">Distribusi jenjang · ' + esc(periode) + '</div></div></div><div class="chart-box"><canvas data-c1></canvas></div></section>' +
       '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('chart') + ' Perkembangan Generus ' + m.tahun + '</div><div class="card-sub">' + (kel ? esc(namaKel) + ' · ' : '') + 'Jan–Des · klik legenda untuk tampil/sembunyi</div></div></div><div class="chart-box"><canvas data-c2></canvas></div></section>' +
@@ -111,6 +113,50 @@
     if (opt.onOpen) c.querySelectorAll('[data-open]').forEach(el => { el.onclick = () => opt.onOpen(mo.items.find(i => i.id === el.getAttribute('data-open'))); });
     drawCharts(c, m, kel, items);
   };
+
+  // ───────────────────────── Mutu KBM (v1.6) ─────────────────────────
+  const kelasPct = v => (v === null ? 'na' : v >= 80 ? 'hi' : v >= 60 ? 'md' : 'lo');
+  function meter(label, v, sub) {
+    return '<div class="mutu-row ' + kelasPct(v) + '"><div class="mr-l"><b>' + esc(label) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>' +
+      '<div class="mr-bar"><i style="width:' + (v === null ? 0 : Math.min(100, v)) + '%"></i></div><span class="mr-v num">' + (v === null ? '—' : App.fmtPct(v)) + '</span></div>';
+  }
+  const tdPct = v => '<td class="r num"><span class="pctc ' + kelasPct(v) + '" style="--p:' + (v === null ? 0 : v) + '%">' + (v === null ? '—' : App.fmtPct(v)) + '</span></td>';
+  const kosong = t => !t || /^(-|tidak ada|tdk ada|belum ada|nihil|kosong|libur)\.?$/i.test(String(t).trim());
+
+  function mutuHtml(m, items, kel, periode) {
+    const its = items.filter(i => i.mutu);
+    if (!items.length) return '';
+    if (!its.length) return '<section class="card" style="margin-top:16px"><div class="notice">' + icon('info') + '<div>Persentase kehadiran & materi tampil setelah server diperbarui ke v1.6.</div></div></section>';
+    const nLapor = j => its.filter(i => i.mutu.h[j] !== null).length;
+    const hadir = App.JENJANG_HADIR.map((j, i) => meter(j, App.rataPct(its, 'h', i), nLapor(i) ? nLapor(i) + ' kelompok' : (i === 5 ? 'belum ada kelas' : 'belum ada data')));
+    const materi = App.JENJANG_MATERI.map((j, i) => meter(j, App.rataPct(its, 'm', i), its.filter(x => x.mutu.m[i] !== null).length + ' kelompok'));
+    const thf = its.filter(i => i.mutu.thf);
+    const totThf = thf.reduce((a, i) => a + (i.mutu.thf.jml || 0), 0);
+    const urut = (a, b) => String(a.nama).localeCompare(String(b.nama));
+    return '<div class="grid-2 mutu-grid" style="margin-top:16px">' +
+      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('users') + ' Persentase Kehadiran per Jenjang</div><div class="card-sub">' + esc(periode) + (kel ? '' : ' · rata-rata ' + its.length + ' kelompok, ditimbang jumlah peserta') + '</div></div></div>' + hadir.join('') + '</section>' +
+      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('book') + ' Materi Tersampaikan</div><div class="card-sub">Caberawit, Praremaja & Remaja · ' + esc(periode) + '</div></div></div>' + materi.join('') +
+      '<div class="mutu-leg"><span class="hi">≥ 80%</span><span class="md">60–79%</span><span class="lo">&lt; 60%</span></div></section></div>' +
+
+      (its.length > 1 ? '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px"><div><div class="card-title">' + icon('listCheck') + ' Kehadiran & Materi per Kelompok</div><div class="card-sub">' + esc(periode) + '</div></div></div>' +
+        '<div class="tbl-scroll"><table class="tbl mon-tbl mutu-tbl"><thead><tr><th rowspan="2">Kelompok</th><th colspan="6" class="c">Kehadiran</th><th colspan="3" class="c">Materi</th></tr><tr>' +
+        ['Cbr', 'Prm', 'Rmj', 'Pnk', 'MM', 'Thf', 'Cbr', 'Prm', 'Rmj'].map((h, i) => '<th class="r' + (i === 6 ? ' sep' : '') + '">' + h + '</th>').join('') + '</tr></thead><tbody>' +
+        its.slice().sort(urut).map(i => '<tr><td><b>' + esc(i.nama) + '</b></td>' + i.mutu.h.map(tdPct).join('') + i.mutu.m.map((v, x) => tdPct(v).replace('<td class="r num">', x === 0 ? '<td class="r num sep">' : '<td class="r num">')).join('') + '</tr>').join('') +
+        '</tbody></table></div><p class="muted" style="font-size:12px;padding:8px 16px 14px;margin:0">Cbr Caberawit · Prm Praremaja · Rmj Remaja · Pnk Pranikah (rata-rata sambung) · MM Muda-Mudi · Thf Tahfidz</p></section>' : '') +
+
+      '<div class="grid-2" style="margin-top:16px">' +
+      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('book') + ' Kelas Tahfidz</div><div class="card-sub">' + (thf.length ? thf.length + ' dari ' + its.length + ' kelompok punya kelas tahfidz · ' + App.fmtNum(totThf) + ' peserta' : 'Belum ada kelompok yang punya kelas tahfidz') + '</div></div></div>' +
+      (thf.length ? '<div class="thf-list">' + thf.slice().sort(urut).map(i => '<div class="thf-item"><div class="grow"><b>' + esc(i.nama) + '</b><small>' + icon('clock', 'sm') + ' ' + esc(i.mutu.thf.jadwal || 'Jadwal belum diisi') + '</small></div>' +
+        '<div class="thf-n"><b class="num">' + App.fmtNum(i.mutu.thf.jml) + '</b><small>peserta</small></div><span class="pctc ' + kelasPct(i.mutu.h[5]) + '" style="--p:' + (i.mutu.h[5] || 0) + '%">' + App.fmtPct(i.mutu.h[5]) + '</span></div>').join('') + '</div>'
+        : '<div class="empty">' + icon('book') + 'Belum ada kelas tahfidz pada ' + esc(periode) + '.</div>') + '</section>' +
+      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('sparkle') + ' Kegiatan Muda-Mudi</div><div class="card-sub">Minggu 1–4 · ' + esc(periode) + '</div></div></div>' +
+      '<div class="mm-list">' + its.slice().sort(urut).map(i => {
+        const mm = i.mutu.mm;
+        return '<div class="mm-item"><div class="mm-h"><b>' + esc(i.nama) + '</b><span class="muted">' + App.fmtNum(i.rekap ? i.rekap.mudamudi : 0) + ' muda-mudi</span><span class="pctc ' + kelasPct(i.mutu.h[4]) + '" style="--p:' + (i.mutu.h[4] || 0) + '%">' + App.fmtPct(i.mutu.h[4]) + '</span></div>' +
+          '<ol class="mm-w">' + [0, 1, 2, 3].map(w => '<li class="' + (kosong(mm[w]) ? 'off' : '') + '"><span>M' + (w + 1) + '</span>' + esc(mm[w] || '—') + '</li>').join('') + '</ol>' +
+          (mm[4] && !kosong(mm[4]) ? '<div class="mm-lain"><span>Lainnya</span>' + esc(mm[4]) + '</div>' : '') + '</div>';
+      }).join('') + '</div></section></div>';
+  }
 
   async function drawCharts(c, m, kel, items) {
     try { await App.lib('chart'); } catch (e) {
