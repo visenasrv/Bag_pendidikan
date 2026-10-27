@@ -5,17 +5,22 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.6.3.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.6.4.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.6.3** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.6.4** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.6.3 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.6.4 (untuk aplikasi yang sudah berjalan)
 
-> **v1.6.1–v1.6.3** (hanya frontend) — PDF daftar hadir: status **Belum konfirmasi** dicetak **"-"**; tanggal & tempat di bawah judul serta catatan cara hitung persentase dihapus; ditambah kolom **tanda tangan** (kiri: *Mengetahui, Ki Desa* · kanan: *Bagian Pendidikan Desa*) yang **namanya terisi otomatis** dari daftar hadir sesi itu: Ki Desa = peserta berdapuan **KI Desa**; Bagian Pendidikan Desa = peserta berdapuan **Bagian Pendidikan Desa** (atau *Bag. Pendidikan Desa*), diutamakan dari kelompok yang namanya memuat **Perwakilan**, lalu yang memuat **Desa**, dan diambil **baris paling atas**. Bila tidak ada yang cocok, dicetak garis titik-titik untuk diisi tangan. Penulisan dapuan harus sama (huruf besar/kecil & titik diabaikan). Bila sudah memasang v1.6.0, cukup salin isi `musyawaroh-pelaporan-update-v1.6.3.zip` lalu `git push` — `Kode.gs` tidak berubah. Bila masih di versi lebih lama, kerjakan langkah U1–U3 di bawah dengan ZIP v1.6.3.
+> **v1.6.1–v1.6.4** (hanya frontend) — PDF daftar hadir: status **Belum konfirmasi** dicetak **"-"**; tanggal & tempat di bawah judul serta catatan cara hitung persentase dihapus; ditambah kolom **tanda tangan** (kiri: *Mengetahui, Ki Desa* · kanan: *Bagian Pendidikan Desa*) yang **namanya terisi otomatis** (baris paling atas):
+>  - **Ki Desa** = peserta berdapuan *KI Desa*.
+>  - **Bagian Pendidikan Desa** = urutan pencarian: (1) dapuan yang memuat kata **Pendidikan** di kelompok bernama **…Perwakilan…**; (2) dapuan *Bagian Pendidikan Desa* di kelompok mana saja; (3) dapuan memuat *Pendidikan* dan *Desa*; (4) dapuan memuat *Pendidikan* di kelompok bernama **…Desa…**. Dapuan Wakil/Sekretaris/Bendahara/Pembina dilewati; *Bag.* = *Bagian*.
+>  - Dicari dulu di daftar hadir sesi itu, lalu di daftar peserta saat ini. Bila tetap tidak ada, dicetak garis titik-titik untuk diisi tangan.
+>
+> Bila sudah memasang v1.6.0, cukup salin isi `musyawaroh-pelaporan-update-v1.6.4.zip` lalu `git push` — `Kode.gs` tidak berubah. Bila masih di versi lebih lama, kerjakan langkah U1–U3 di bawah dengan ZIP v1.6.4.
 
 ### Isi v1.6.0
 
@@ -43,7 +48,7 @@ v1.6.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U3 di bawah deng
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
 ### U2. Frontend
-1. Salin isi **`musyawaroh-pelaporan-update-v1.6.3.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**. File baru: `manifest.webmanifest`, `sw.js`, `pwa.js`, `offline.html`, dan folder `icons/`.
+1. Salin isi **`musyawaroh-pelaporan-update-v1.6.4.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**. File baru: `manifest.webmanifest`, `sw.js`, `pwa.js`, `offline.html`, dan folder `icons/`.
 2. `git add .` → `git commit -m "Update v1.6.0"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
 
 ### U3. Update berikutnya (penting sejak aplikasi bisa diinstal)

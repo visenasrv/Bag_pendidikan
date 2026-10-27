@@ -589,12 +589,28 @@
     const urut = B ? B.kelompok().map(k => k.id) : [];
     const namaK = r => { const k = B && B.kelompokById(r.kelompokId); return n(k ? k.nama : r.namaKelompok); };
     const pos = r => (urut.indexOf(r.kelompokId) + 1 || 999) * 1000 + (r.no || 999);
-    const cari = (dapuan, tingkat) => {
-      const cocok = sesi.rows.filter(r => n(r.dapuan) === dapuan && String(r.nama || '').trim()).sort((a, b) => pos(a) - pos(b));
-      for (let i = 0; i < tingkat.length; i++) { const r = cocok.find(x => tingkat[i].test(namaK(x))); if (r) return String(r.nama).trim(); }
-      return cocok.length ? String(cocok[0].nama).trim() : '';
+    const siap = list => list.filter(r => String(r.nama || '').trim()).sort((a, b) => pos(a) - pos(b));
+    const ada = siap(sesi.rows);
+    // cadangan: daftar peserta saat ini (mis. pengurus baru ditambahkan setelah sesi disimpan)
+    const kini = siap(((B && B.peserta()) || []).map(p => ({ kelompokId: p.kelompokId, no: p.urutan, dapuan: p.dapuan, nama: p.nama })));
+    /** tingkat = daftar syarat [dapuan cocok?, kelompok cocok?] — yang pertama ditemukan (baris paling atas) dipakai */
+    const cari = tingkat => {
+      for (const sumber of [ada, kini]) {
+        for (let i = 0; i < tingkat.length; i++) {
+          const r = sumber.find(x => tingkat[i][0](n(x.dapuan)) && (!tingkat[i][1] || tingkat[i][1].test(namaK(x))));
+          if (r) return String(r.nama).trim();
+        }
+      }
+      return '';
     };
-    return { ki: cari('ki desa', [/desa/]), bp: cari('bagian pendidikan desa', [/perwakilan/, /desa/]) };
+    const isKi = d => d === 'ki desa' || d === 'k i desa' || d === 'ketua ki desa';
+    const pend = d => /pendidikan/.test(d) && !/wakil|sekretaris|bendahara|pembina|anggota/.test(d);
+    return {
+      ki: cari([[isKi, /desa/], [isKi]]),
+      // v1.6.4: dapuan berisi "Pendidikan" di kelompok Perwakilan Desa → "Bagian Pendidikan Desa" di mana saja
+      //         → dapuan "…Pendidikan…Desa" → dapuan "…Pendidikan…" di kelompok bernama "…Desa…"
+      bp: cari([[pend, /perwakilan/], [d => d === 'bagian pendidikan desa'], [d => pend(d) && /desa/.test(d)], [pend, /desa/]]),
+    };
   }
 
   /** Kolom tanda tangan: kiri "Mengetahui, Ki Desa" · kanan "Bagian Pendidikan Desa" (v1.6.2) · nama otomatis (v1.6.3) */
