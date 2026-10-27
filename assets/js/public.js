@@ -55,7 +55,7 @@
     const cfg0 = App.swrPeek('cfg') || {};
     const menu = [
       ['#/lapor', 'fileEdit', 'Isi Laporan', 'utama'], ['#/koreksi', 'fileCheck', 'Koreksi'], ['#/dashboard', 'chart', 'Dashboard'],
-      ['#/monitoring', 'heart', 'Monitoring Akhlaq'], ['#/notulen', 'book', 'Notulen'],
+      ['#/monitoring', 'heart', 'Monitoring Akhlaq'], ['#/evaluasi', 'pie', 'Lap. Evaluasi'], ['#/notulen', 'book', 'Notulen'],
     ];
     const root = App.mount(
       '<div class="pub">' +
@@ -295,6 +295,33 @@
     bindTop(root);
     root.querySelector('[data-pdf]').onclick = e => App.pdf.run(e.currentTarget, () => App.pdf.laporan(lap));
   }
+
+  // ───────────────────────── LAP. EVALUASI (Power BI) — v1.6.5 ─────────────────────────
+  /** Laporan Power BI "Publish to web" ditempel apa adanya (umum & admin) */
+  App.evaluasiView = function (el) {
+    const url = App.evaluasiUrl();
+    el.innerHTML = '<section class="card eval-card"><div class="card-head" style="flex-wrap:wrap;gap:10px"><div class="grow"><div class="card-title">' + icon('pie') + ' Lap. Evaluasi</div>' +
+      '<div class="card-sub">Laporan Power BI PPG Kutai Timur</div></div>' +
+      '<div class="row wrap" style="gap:8px"><button class="btn btn-soft btn-sm" data-fs>' + icon('maximize', 'sm') + ' Layar penuh</button>' +
+      '<a class="btn btn-soft btn-sm" href="' + esc(url) + '" target="_blank" rel="noopener">' + icon('external', 'sm') + ' Buka di tab baru</a></div></div>' +
+      '<div class="notice eval-tip">' + icon('filter') + '<div>Laporan ini memuat data <strong>semua desa</strong>. Pilih <strong>Desa / Kelompok Sangatta Selatan</strong> lewat filter di dalam laporan.</div></div>' +
+      (navigator.onLine === false ? '<div class="notice err" style="margin-top:10px">' + icon('cloudOff') + '<div>Sedang offline — laporan Power BI butuh koneksi internet.</div></div>' : '') +
+      '<div class="eval-frame" data-wrap><div class="eval-load"><span class="spin"></span>Memuat laporan Power BI…</div>' +
+      '<iframe title="Lap. Evaluasi — Power BI" src="' + esc(url) + '" allowfullscreen="true" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div></section>';
+    const wrap = el.querySelector('[data-wrap]');
+    const fr = wrap.querySelector('iframe');
+    fr.addEventListener('load', () => wrap.classList.add('loaded'));
+    el.querySelector('[data-fs]').onclick = () => {
+      const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+      if (req) req.call(wrap); else window.open(url, '_blank', 'noopener');
+    };
+  };
+  App.route('/evaluasi', function () {
+    if (!App.api.configured()) return setupScreen();
+    const root = App.mount('<div class="pub pub-wide">' + topbar('Lap. Evaluasi', 'Laporan evaluasi Power BI') + '<div data-body></div></div>');
+    bindTop(root);
+    App.evaluasiView(root.querySelector('[data-body]'));
+  });
 
   // ───────────────────────── DASHBOARD RINGKASAN (publik) ─────────────────────────
   App.route('/dashboard', function (p, vid) {

@@ -1226,3 +1226,17 @@ body.presenting #toasts, body.presenting .backdrop, body.presenting .overlay { z
 .install-card > svg { color: var(--link); flex: none; }
 .install-card:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: var(--tint); }
 .sidebar .nav-item[hidden] { display: none; }
+
+/* ── v1.6.5 Lap. Evaluasi (Power BI) ── */
+.eval-card { padding-bottom: 12px; }
+.eval-tip { margin-top: 4px; font-size: 13.5px; }
+.eval-frame { position: relative; margin-top: 12px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); height: calc(100vh - 250px); min-height: 520px; }
+.eval-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; opacity: 0; transition: opacity .25s; }
+.eval-frame.loaded iframe { opacity: 1; }
+.eval-load { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+.eval-load .spin { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: evspin .8s linear infinite; }
+@keyframes evspin { to { transform: rotate(360deg); } }
+.eval-frame:fullscreen { border-radius: 0; height: 100vh; border: 0; }
+@media (max-width: 720px) { .eval-frame { height: calc(100vh - 230px); min-height: 460px; margin-left: -6px; margin-right: -6px; } }
+.eval-frame.loaded .eval-load { display: none; }
+.eval-tip strong { font-weight: 700; }

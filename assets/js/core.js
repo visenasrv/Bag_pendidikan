@@ -141,6 +141,8 @@
     fileCheck: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',
     file: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
     chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+    pie: '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+    external: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     bar: '<path d="M3 3v18h18M7 16v-4M12 16V8M17 16v-7"/>',
     grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
     book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
@@ -316,6 +318,13 @@
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
   App.SERVER_MIN = '1.6.0';
+  /** v1.6.5: Lap. Evaluasi (Power BI "Publish to web") — tautan dari Pengaturan, atau bawaan */
+  App.EVALUASI_BAWAAN = 'https://app.powerbi.com/view?r=eyJrIjoiYzVjNWMzNzUtMzM2MC00ODUyLTlkODMtMWNkNWQ3OTI1NWFkIiwidCI6IjA2Yzg5ZTcyLTM3YzMtNDQyMC1hNTA2LTg4MDM1Yjg5NzUxYyIsImMiOjEwfQ%3D%3D';
+  App.evaluasiUrl = function () {
+    const set = (App.store && App.store.data && App.store.data.pengaturan) || {};
+    const cfg = (App.swrPeek && App.swrPeek('cfg')) || {};
+    return set.evaluasiUrl || cfg.evaluasiUrl || App.EVALUASI_BAWAAN;
+  };
   const verNum = v => String(v || '0').split('.').map(n => parseInt(n, 10) || 0).reduce((a, n) => a * 1000 + n, 0);
   App.cekVersi = function (v) {
     const lama = verNum(v) < verNum(App.SERVER_MIN);

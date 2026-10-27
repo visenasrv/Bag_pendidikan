@@ -13,6 +13,7 @@
     { k: 'dashboard', t: 'Dashboard', i: 'grid', p: '/admin/dashboard' },
     { k: 'laporan', t: 'Kelola Laporan', i: 'file', p: '/admin/laporan' },
     { k: 'monitoring', t: 'Monitoring Akhlaq', i: 'heart', p: '/admin/monitoring' },
+    { k: 'evaluasi', t: 'Lap. Evaluasi', i: 'pie', p: '/admin/evaluasi' },
     { k: 'musyawaroh', t: 'Mode Musyawaroh', i: 'present', p: '/admin/musyawaroh' },
     { k: 'notulen', t: 'Notulen', i: 'list', p: '/admin/notulen' },
     { k: 'hadir', t: 'Daftar Hadir', i: 'userCheck', p: '/admin/hadir' },
@@ -38,7 +39,7 @@
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
           '<button class="nav-item" data-pwa-install hidden style="justify-content:center">' + icon('download') + ' Instal Aplikasi</button>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.6 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.6.5 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
@@ -287,6 +288,16 @@
 
   // ───────────────────────── MONITORING & BIMBINGAN AKHLAQ (v1.4) ─────────────────────────
   // Versi admin = versi umum + tabel data rinci (nama anak & pelapor). Data admin hanya disimpan di memori.
+  // ───────────────────────── LAP. EVALUASI (Power BI) — v1.6.5 ─────────────────────────
+  App.route('/admin/evaluasi', page('evaluasi', 'Lap. Evaluasi', function (c) {
+    c._manual = true;   // iframe tidak dimuat ulang saat data bundle sinkron
+    const url = App.evaluasiUrl();
+    if (c.querySelector('.eval-frame') && c._evalUrl === url) return;
+    c._evalUrl = url;
+    c.innerHTML = '<div class="page-head"><div><h1>Lap. Evaluasi</h1><p>Laporan evaluasi Power BI · tautan bisa diganti di Pengaturan → Lap. Evaluasi.</p></div></div><div data-ev></div>';
+    App.evaluasiView(c.querySelector('[data-ev]'));
+  }));
+
   App.route('/admin/monitoring', page('monitoring', 'Monitoring Akhlaq', function (c, p, vid) {
     c._manual = true;   // tidak bergantung data bundle → jangan gambar ulang saat sinkron
     if (c.querySelector('[data-mon]') && c._monDone) return;

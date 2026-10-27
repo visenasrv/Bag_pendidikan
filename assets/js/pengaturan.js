@@ -7,7 +7,7 @@
   const App = window.App;
   const esc = App.esc, icon = App.icon, Store = App.store, B = App.B;
 
-  const TABS = [['kelompok', 'Kelompok & Pengurus', 'users'], ['logo', 'Logo & Banner', 'image'], ['tampilan', 'Warna & Tema', 'palette'], ['akun', 'Akun & Email', 'key'], ['notulen', 'Tempat Notulen', 'pin'], ['monitoring', 'Monitoring', 'heart']];
+  const TABS = [['kelompok', 'Kelompok & Pengurus', 'users'], ['logo', 'Logo & Banner', 'image'], ['tampilan', 'Warna & Tema', 'palette'], ['akun', 'Akun & Email', 'key'], ['notulen', 'Tempat Notulen', 'pin'], ['monitoring', 'Monitoring', 'heart'], ['evaluasi', 'Lap. Evaluasi', 'pie']];
 
   App.route('/admin/pengaturan', App.admin.page('pengaturan', 'Pengaturan', function (c) {
     const tab = App.ls.get('mp_set_tab') || 'kelompok';
@@ -15,7 +15,7 @@
       '<div class="tabs">' + TABS.map(t => '<button class="tab ' + (t[0] === tab ? 'on' : '') + '" data-tab="' + t[0] + '">' + icon(t[2], 'sm') + ' ' + t[1] + '</button>').join('') + '</div><div data-body style="max-width:860px"></div>';
     c.querySelectorAll('[data-tab]').forEach(b => { b.onclick = () => { App.ls.set('mp_set_tab', b.getAttribute('data-tab')); App.render(); }; });
     const body = c.querySelector('[data-body]');
-    ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring })[tab] ? ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring })[tab](body) : tabKelompok(body);
+    ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring, evaluasi: tabEvaluasi })[tab] ? ({ kelompok: tabKelompok, logo: tabLogo, akun: tabAkun, notulen: tabTempat, tampilan: tabTampilan, monitoring: tabMonitoring, evaluasi: tabEvaluasi })[tab](body) : tabKelompok(body);
   }));
 
   // ───────────────────────── Kelompok & Pengurus ─────────────────────────
@@ -392,6 +392,33 @@
   // ───────────────────────── Sumber data Monitoring ─────────────────────────
   const WA_BAWAAN = "Assalamu'alaikum Bpk/Ibu, berikut orang tua yang sudah mengisi monitoring {bulan} {tahun}:\n\n{data}\n\nMohon amal sholih, sekiranya yang belum mengisi dapat segera mengisi. Untuk yang sudah mengisi kami syukuri, Alhamdulillah Jazakumullohu Khoiro.";
   const WA_BARIS = '{no}. {anak} — ortu: {pelapor}';
+  /** v1.6.5: tautan Power BI untuk menu Lap. Evaluasi */
+  function tabEvaluasi(el) {
+    const s = B.set();
+    const bawaan = s.evaluasiBawaan || App.EVALUASI_BAWAAN;
+    el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('pie') + ' Tautan Lap. Evaluasi (Power BI)</div>' +
+      '<div class="card-sub">Laporan Power BI <b>"Publish to web"</b> yang ditampilkan di menu <b>Lap. Evaluasi</b> (umum & admin). Kosongkan untuk memakai tautan bawaan.</div>' +
+      '<div class="field" style="margin-top:16px"><label>Tautan atau kode sematan</label><textarea class="input" data-u rows="3" placeholder="' + esc(bawaan) + '" style="font-size:13px">' + esc(s.evaluasiUrl || '') + '</textarea>' +
+      '<div class="help">' + icon('info', 'sm') + 'Boleh menempel tautan <code>https://app.powerbi.com/view?r=…</code> atau seluruh kode <code>&lt;iframe …&gt;</code> dari Power BI (File → Sematkan laporan → Publikasikan ke web).</div></div>' +
+      '<div class="row wrap" style="margin-top:16px;gap:8px"><button class="btn btn-primary" data-save>' + icon('save') + ' Simpan</button><button class="btn btn-ghost" data-reset>' + icon('refresh', 'sm') + ' Pakai tautan bawaan</button><a class="btn btn-ghost" href="#/admin/evaluasi">' + icon('pie') + ' Buka Lap. Evaluasi</a></div></section>';
+    const ta = el.querySelector('[data-u]');
+    const simpan = v => {
+      Store.mutate('ubahPengaturan', { evaluasi_url: v }, d => { d.pengaturan.evaluasiUrl = v; }, { label: 'Tautan Lap. Evaluasi' });
+      const cfg = App.swrPeek('cfg'); if (cfg) cfg.evaluasiUrl = v || bawaan;
+      App.toast(v ? 'Tautan Lap. Evaluasi disimpan.' : 'Memakai tautan bawaan.');
+    };
+    el.querySelector('[data-save]').onclick = () => {
+      let v = ta.value.trim();
+      const m = v.match(/src\s*=\s*["']([^"']+)["']/i);
+      if (m) v = m[1].replace(/&amp;/g, '&');
+      if (v && !/^https:\/\/[^\s"'<>]+$/.test(v)) { App.toast('Tautan harus diawali https:// (mis. tautan Power BI "Publish to web").', 'warn'); return; }
+      if (v === bawaan) v = '';
+      ta.value = v;
+      simpan(v);
+    };
+    el.querySelector('[data-reset]').onclick = () => { ta.value = ''; simpan(''); };
+  }
+
   function tabMonitoring(el) {
     const s = B.set();
     el.innerHTML = '<section class="card lg"><div class="card-title">' + icon('heart') + ' Sumber Data Monitoring & Bimbingan Akhlaq</div>' +
