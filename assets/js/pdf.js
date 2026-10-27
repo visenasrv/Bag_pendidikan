@@ -528,7 +528,7 @@
     const kunci = App.hadirKunci(B ? B.peserta() : []);
     const h = App.hadirRingkas(sesi.rows, kunci);
     const d = w.doc, M = w.M, lebar = w.W - 2 * M;
-    w.title('DAFTAR HADIR MUSYAWAROH', App.fmtTanggal(sesi.tanggal) + ' · ' + (sesi.tempat || '-'));
+    w.title('DAFTAR HADIR MUSYAWAROH');
     w.statBoxes([{ l: 'Peserta (orang)', v: h.total, hero: true }, { l: 'Hadir', v: h.hadir }, { l: 'Izin', v: h.izin }, { l: 'Belum Konfirmasi', v: h.belum }, { l: 'Kehadiran', v: App.fmtPct(h.persen) }]);
     const urut = B ? B.kelompok().map(k => k.id) : [];
     const kelIds = Array.from(new Set(sesi.rows.map(r => r.kelompokId))).sort((a, b) => (urut.indexOf(a) + 1 || 999) - (urut.indexOf(b) + 1 || 999));
@@ -577,8 +577,53 @@
       });
       w.y += 3;
     });
-    w.ensure(10);
-    w.para('Persentase per kelompok = peserta hadir ÷ peserta terdaftar di kelompok itu. Persentase keseluruhan menghitung orang yang sama di beberapa kelompok (nama sama atau disinkronkan) sebagai 1 orang.', 8.5, C.muted);
+    ttdHadir(w, ttdNama(sesi));
+  }
+
+  /** v1.6.3: nama penanda tangan diambil dari daftar hadir sesuai dapuan (baris paling atas).
+   *  Ki Desa = dapuan "KI Desa"; Bagian Pendidikan Desa = dapuan "Bagian Pendidikan Desa",
+   *  diutamakan dari kelompok Perwakilan Desa. */
+  function ttdNama(sesi) {
+    const B = App.B;
+    const n = t => String(t || '').toLowerCase().replace(/\bbag\.?\s/g, 'bagian ').replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const urut = B ? B.kelompok().map(k => k.id) : [];
+    const namaK = r => { const k = B && B.kelompokById(r.kelompokId); return n(k ? k.nama : r.namaKelompok); };
+    const pos = r => (urut.indexOf(r.kelompokId) + 1 || 999) * 1000 + (r.no || 999);
+    const cari = (dapuan, tingkat) => {
+      const cocok = sesi.rows.filter(r => n(r.dapuan) === dapuan && String(r.nama || '').trim()).sort((a, b) => pos(a) - pos(b));
+      for (let i = 0; i < tingkat.length; i++) { const r = cocok.find(x => tingkat[i].test(namaK(x))); if (r) return String(r.nama).trim(); }
+      return cocok.length ? String(cocok[0].nama).trim() : '';
+    };
+    return { ki: cari('ki desa', [/desa/]), bp: cari('bagian pendidikan desa', [/perwakilan/, /desa/]) };
+  }
+
+  /** Kolom tanda tangan: kiri "Mengetahui, Ki Desa" · kanan "Bagian Pendidikan Desa" (v1.6.2) · nama otomatis (v1.6.3) */
+  function ttdHadir(w, nama) {
+    nama = nama || {};
+    const d = w.doc, M = w.M, lebar = w.W - 2 * M;
+    w.ensure(48);
+    w.y += 8;
+    const xs = [M + lebar * 0.25, M + lebar * 0.75];
+    w.font('normal', 10.5); w.color(C.text);
+    d.text('Mengetahui,', xs[0], w.y, { align: 'center' });
+    d.text('Ki Desa', xs[0], w.y + 5.5, { align: 'center' });
+    d.text('Bagian Pendidikan Desa', xs[1], w.y + 5.5, { align: 'center' });
+    const yl = w.y + 30;
+    w.draw(C.text); d.setLineWidth(0.3);
+    [nama.ki, nama.bp].forEach((nm, i) => {
+      const x = xs[i];
+      if (nm) {
+        w.font('bold', 10.5); w.color(C.text);
+        const t = d.splitTextToSize(nm, lebar / 2 - 8)[0];
+        d.text(t, x, yl, { align: 'center' });
+        const tw = d.getTextWidth(t);
+        d.setLineWidth(0.35); d.line(x - tw / 2, yl + 1, x + tw / 2, yl + 1);
+      } else {
+        w.font('normal', 10.5);
+        d.text('(', x - 30, yl); d.text(')', x + 30, yl, { align: 'right' }); d.setLineDashPattern([0.6, 0.9], 0); d.line(x - 27, yl + 0.6, x + 27, yl + 0.6); d.setLineDashPattern([], 0);
+      }
+    });
+    w.y = yl + 6;
   }
 
   // ───────────────────────── API publik pdf ─────────────────────────
