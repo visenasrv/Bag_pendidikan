@@ -296,9 +296,11 @@
     // kartu jenjang: depan = bulan ini, belakang (diketuk → berbalik) = laporan bulan sebelumnya
     const pb = +per.bulan === 1 ? 12 : +per.bulan - 1, pt = +per.bulan === 1 ? +per.tahun - 1 : +per.tahun;
     const lp = B.laporanPeriode(pb, pt).find(x => x.KelompokID === l.KelompokID) || null;
-    // v1.7: kartu Pranikah menampilkan juga isian kegiatan Sambung 1 & 2 (HTML sudah di-escape)
+    // v1.7: kartu Pranikah menampilkan juga isian kegiatan Sambung 1 & 2 (HTML sudah di-escape).
+    //       Sambung 2 disembunyikan bila kegiatannya kosong / "-" / "tidak ada" dan persennya 0.
+    const kosongSmb = t => /^(|-+|—|tidak ada|tdk ada|belum ada|nihil|kosong)\.?$/i.test(String(t || '').trim());
     const catatan = (x, p) => (p === 'Pnk'
-      ? [1, 2].filter(n => n === 1 || ada(x['Pnk_Hadir' + n]) || String(x['Pnk_Sambung' + n] || '').trim())
+      ? [1, 2].filter(n => n === 1 || !kosongSmb(x['Pnk_Sambung' + n]) || App.num(x['Pnk_Hadir' + n]) > 0)
         .map(n => '<span class="smb"><span class="sl">Sambung ' + n + '</span><span class="sk">' + esc(String(x['Pnk_Sambung' + n] || '').trim() || '—') + '</span><b class="sp">' + pct(x['Pnk_Hadir' + n]) + '</b></span>').join('')
       : esc((x[p + '_HariEfektif'] || 0) + ' hari efektif · hadir ' + pct(x[p + '_Hadir']) + ' · materi ' + pct(x[p + '_Materi'])));
     const jen = [['Caberawit', 'Jml_Caberawit', 'Cbr'], ['Praremaja', 'Jml_Praremaja', 'Prm'], ['Remaja', 'Jml_Remaja', 'Rmj'], ['Pranikah', 'Jml_Pranikah', 'Pnk']];
@@ -309,12 +311,12 @@
         const dulu = App.num(lp[j[1]]), d = now - dulu;
         const bi = esc(App.BULAN[+per.bulan - 1]);
         const tren = d > 0 ? '<span class="tren up">▲ naik ' + App.fmtNum(d) + ' di ' + bi + '</span>' : d < 0 ? '<span class="tren down">▼ turun ' + App.fmtNum(-d) + ' di ' + bi + '</span>' : '<span class="tren same">= tetap di ' + bi + '</span>';
-        back = '<div class="h">' + j[0] + ' · ' + esc(App.periode(pb, pt)) + '</div><div class="n">' + App.fmtNum(dulu) + '<small>Orang</small></div><div class="note">' + catatan(lp, j[2]) + '</div>' + tren;
+        back = '<div class="h">' + j[0] + ' · ' + esc(App.periode(pb, pt)) + '</div><div class="n">' + App.fmtNum(dulu) + '<small>Orang</small></div><div class="note' + (j[2] === 'Pnk' ? ' smb-list' : '') + '">' + catatan(lp, j[2]) + '</div>' + tren;
       } else {
         back = '<div class="h">' + j[0] + ' · ' + esc(App.periode(pb, pt)) + '</div><div class="kosong">' + icon('clock') + '<b>Belum ada laporan</b><span>' + esc(App.periode(pb, pt)) + '</span></div>';
       }
       return '<button class="jen flip" data-flip aria-label="' + j[0] + ': ketuk untuk melihat bulan sebelumnya"><span class="jen-in">' +
-        '<span class="face front"><span class="h">' + j[0] + '</span><span class="n">' + App.fmtNum(now) + '<small>Orang</small></span><span class="note">' + catatan(l, j[2]) + '</span><span class="flip-hint">' + icon('refresh', 'sm') + ' bulan lalu</span></span>' +
+        '<span class="face front"><span class="h">' + j[0] + '</span><span class="n">' + App.fmtNum(now) + '<small>Orang</small></span><span class="note' + (j[2] === 'Pnk' ? ' smb-list' : '') + '">' + catatan(l, j[2]) + '</span><span class="flip-hint">' + icon('refresh', 'sm') + ' bulan lalu</span></span>' +
         '<span class="face back">' + back + '<span class="flip-hint">' + icon('refresh', 'sm') + ' bulan ini</span></span></span></button>';
     };
     const LINK = [['Cbr_Link', 'Caberawit'], ['Prm_Link', 'Praremaja'], ['Rmj_Link', 'Remaja'], ['Pnk_Link', 'Pranikah'], ['MM_Link', 'Muda-Mudi']];
