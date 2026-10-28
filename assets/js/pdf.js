@@ -30,9 +30,9 @@
   const TAG_OK = {
     B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, BR: 1, DIV: 1, P: 1, SPAN: 1, FONT: 1, SUB: 1, SUP: 1,
     H1: 1, H2: 1, H3: 1, H4: 1, OL: 1, UL: 1, LI: 1, BLOCKQUOTE: 1, HR: 1, A: 1, IMG: 1,
-    TABLE: 1, THEAD: 1, TBODY: 1, TFOOT: 1, TR: 1, TD: 1, TH: 1,   // v1.7.2: tabel di notulen
+    TABLE: 1, THEAD: 1, TBODY: 1, TFOOT: 1, TR: 1, TD: 1, TH: 1, COLGROUP: 1, COL: 1,   // v1.7.2: tabel di notulen (v1.7.3: lebar kolom)
   };
-  const CSS_OK = ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration-line', 'font-size', 'font-family', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'list-style-type'];
+  const CSS_OK = ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration-line', 'font-size', 'font-family', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'list-style-type', 'height'];
   const nilaiAman = v => v && !/url\s*\(|expression|javascript|[<>{};]/i.test(v);
   App.sanitize = function (html) {
     const doc = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html');

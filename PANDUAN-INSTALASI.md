@@ -5,15 +5,26 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.7.2.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.7.3.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.7.2** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.7.3** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.7.2 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.7.3 (untuk aplikasi yang sudah berjalan)
+
+> **v1.7.3** (hanya frontend):
+> 1. **Menu samping admin bisa diperkecil** — tombol **"Sembunyikan tulisan"** (di atas sakelar Mode Gelap) membuat menu hanya menampilkan ikon; nama menu muncul saat kursor didekatkan. Ketuk lagi (**»**) untuk menampilkan tulisan. Pilihan diingat di perangkat.
+> 2. **Tabel notulen seperti Excel**:
+>    - **Ubah lebar kolom / tinggi baris**: arahkan kursor ke garis tabel sampai berubah jadi ⟷ / ↕, lalu tarik. Di HP pakai tombol **Tabel → Kolom lebih lebar/sempit, Baris lebih tinggi/rendah, Samakan lebar kolom, Tinggi baris otomatis**.
+>    - **Gabung sel (merge)**: seret beberapa sel (atau Shift+klik), lalu **Tabel → Gabungkan n sel**. Bisa juga **Gabung dengan sel kanan / bawah**. **Pisahkan sel** mengembalikan sel gabungan.
+>    - Ukuran & sel gabungan ikut tampil di halaman Notulen, Mode Musyawaroh, dan PDF.
+>
+> Bila sudah memasang v1.7.0 – v1.7.2, cukup salin isi `musyawaroh-pelaporan-update-v1.7.3.zip` lalu `git push` — `Kode.gs` tidak berubah. Bila belum, kerjakan U1 + U2 di bawah dengan ZIP v1.7.3.
+
+### v1.7.2
 
 > **v1.7.2** (hanya frontend):
 > 1. Peringatan bulan terlewat kini berjudul **merah**: *"Laporan {bulan} {tahun} Belum ada"* (di dialog dan di catatan bawah pilihan bulan).
@@ -21,7 +32,6 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 > 3. Admin: tombol **Tampilan Utama** (di atas & menu samping) untuk ke beranda **tanpa keluar**; di beranda muncul tombol **Admin** untuk kembali ke halaman admin.
 > 4. Notulen: tombol **Tabel** di toolbar — pilih ukuran (sampai 8 kolom × 6 baris), lalu atur lewat tombol yang sama: sisipkan/hapus baris & kolom, baris pertama jadi judul, hapus tabel. **Tab** pindah ke sel berikutnya (di sel terakhir menambah baris). Tabel ikut tampil di halaman notulen, Mode Musyawaroh, dan PDF.
 >
-> Bila sudah memasang v1.7.0 / v1.7.1, cukup salin isi `musyawaroh-pelaporan-update-v1.7.2.zip` lalu `git push` — `Kode.gs` tidak berubah. Bila belum, kerjakan U1 + U2 di bawah dengan ZIP v1.7.2.
 
 ### v1.7.1
 
@@ -29,7 +39,7 @@ Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
 ### Isi v1.7.0
 
-v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan **U2** (`musyawaroh-pelaporan-update-v1.7.2.zip`). Langkah ini sudah mencakup semua isi versi sebelumnya.
+v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan **U2** (`musyawaroh-pelaporan-update-v1.7.3.zip`). Langkah ini sudah mencakup semua isi versi sebelumnya.
 
 **Yang baru di v1.7.0**
 1. **Peringatan bulan terlewat** di Form Laporan: bila pelapor memilih bulan padahal bulan sebelumnya belum dilaporkan (mis. memilih Oktober, laporan September belum ada), muncul peringatan dengan pilihan **"Iya, tetap Oktober"** atau **"Tidak, isi September"**. Pilihan "Tidak" langsung mengganti bulan ke bulan pertama yang terlewat. Catatan bulan terlewat tetap tampil di bawah pilihan bulan. Kelompok yang belum pernah melapor tidak diperingatkan.
@@ -46,7 +56,7 @@ v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
 ### U2. Frontend
-1. Salin isi **`musyawaroh-pelaporan-update-v1.7.2.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
+1. Salin isi **`musyawaroh-pelaporan-update-v1.7.3.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
 2. `git add .` → `git commit -m "Update v1.7.0"` → `git push`, tunggu 1–2 menit. HP yang sudah memasang aplikasi akan menampilkan **Versi baru tersedia → Muat ulang**.
 
 ### Cara memasang aplikasi (bagikan ke pengguna)

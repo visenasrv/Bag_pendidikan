@@ -413,14 +413,51 @@
         jadikanDaftar(jenis);
       };
 
-      // ── Tabel (v1.7.2) ──
+      // ── Tabel (v1.7.2; v1.7.3: gabung/pisah sel, atur lebar kolom & tinggi baris) ──
       const sel = () => { const n = elSel(); const c = n && n.closest('td,th'); return c && page.contains(c) ? c : null; };
       const taruh = (cell, akhir) => {
         if (!cell) return;
         const r = document.createRange(); r.selectNodeContents(cell); r.collapse(!akhir);
         const s = getSelection(); s.removeAllRanges(); s.addRange(r); saved = r.cloneRange(); page.focus({ preventScroll: true });
       };
-      const selBaru = tag => { const c = document.createElement(tag); c.innerHTML = '<br>'; return c; };
+      const selBaru = tag => { const c = document.createElement(tag || 'td'); c.innerHTML = '<br>'; return c; };
+      /** Peta tabel: M[baris][kolom] = sel (memperhitungkan colspan & rowspan); sel._r/_c = posisi asal */
+      const peta = t => {
+        const M = [];
+        Array.from(t.rows).forEach((tr, r) => {
+          M[r] = M[r] || [];
+          let c = 0;
+          Array.from(tr.cells).forEach(cell => {
+            while (M[r][c]) c++;
+            const cs = Math.max(1, cell.colSpan || 1), rs = Math.max(1, cell.rowSpan || 1);
+            for (let i = 0; i < rs; i++) for (let k = 0; k < cs; k++) (M[r + i] = M[r + i] || [])[c + k] = cell;
+            cell._r = r; cell._c = c; c += cs;
+          });
+        });
+        return M;
+      };
+      const nKolom = M => M.reduce((a, r) => Math.max(a, r.length), 0);
+      const setSpan = (c, a, v) => { if (v > 1) c.setAttribute(a, v); else c.removeAttribute(a); };
+      /** sisipkan sel ke baris tr pada kolom grid c (urut menurut posisi asal) */
+      const sisipDi = (tr, c, cell) => {
+        const ref = Array.from(tr.cells).find(x => x._c > c);
+        if (ref) tr.insertBefore(cell, ref); else tr.appendChild(cell);
+        cell._c = c;
+      };
+      // lebar kolom disimpan di <colgroup><col style="width:%">
+      const colgroup = (t, buat) => {
+        let cg = Array.from(t.children).find(x => x.nodeName === 'COLGROUP');
+        const n = nKolom(peta(t));
+        if (cg && cg.children.length !== n) { cg.remove(); cg = null; }
+        if (!cg && buat) {
+          cg = document.createElement('colgroup');
+          for (let i = 0; i < n; i++) { const c = document.createElement('col'); c.style.width = (100 / n).toFixed(2) + '%'; cg.appendChild(c); }
+          t.insertBefore(cg, t.firstChild);
+        }
+        return cg;
+      };
+      const lebar = cg => Array.from(cg.children).map(c => parseFloat(c.style.width) || 0);
+      const aturLebar = (cg, w) => { const tot = w.reduce((a, b) => a + b, 0) || 100; Array.from(cg.children).forEach((c, i) => { c.style.width = (w[i] * 100 / tot).toFixed(2) + '%'; }); };
       const sisipTabel = (br, kl) => {
         pulihkan();
         const t = document.createElement('table');
@@ -436,7 +473,7 @@
           if (blok && !page.contains(blok)) blok = null;
           if (blok && blok.closest('li')) blok = blok.closest('ul,ol');
           if (blok && blok !== page) {
-            const kosong = !blok.textContent.replace(/\u200b/g, '').trim() && !blok.querySelector('img');
+            const kosong = !blok.textContent.replace(/​/g, '').trim() && !blok.querySelector('img');
             if (kosong && blok.nodeName === 'P') { blok.replaceWith(t); t.after(p); }
             else { blok.after(t); t.after(p); }
           } else if (s.rangeCount && dalam(s.anchorNode)) { const r = s.getRangeAt(0); r.collapse(false); r.insertNode(p); r.insertNode(t); }
@@ -445,44 +482,283 @@
         taruh(t.querySelector('td'));
         sinkron(); status();
       };
-      const kolomDari = cell => {
-        // indeks kolom visual (memperhitungkan colspan)
-        let x = 0; for (let c = cell.parentElement.firstElementChild; c && c !== cell; c = c.nextElementSibling) x += +(c.getAttribute('colspan') || 1);
-        return x;
+      /** baris kosong (semua selnya tertutup rowspan dari atas) dibuang */
+      const rapikanTabel = t => {
+        let ubah = true;
+        while (ubah) {
+          ubah = false;
+          const M = peta(t);
+          Array.from(t.rows).forEach((tr, r) => {
+            if (ubah || tr.cells.length) return;
+            const seen = new Set();
+            (M[r] || []).forEach(c => { if (c && !seen.has(c)) { seen.add(c); setSpan(c, 'rowspan', (c.rowSpan || 1) - 1); } });
+            tr.remove(); ubah = true;
+          });
+        }
+        if (!t.rows.length) t.remove();
       };
-      const selPada = (tr, x) => { let k = 0; for (let c = tr.firstElementChild; c; c = c.nextElementSibling) { const sp = +(c.getAttribute('colspan') || 1); if (x < k + sp) return c; k += sp; } return tr.lastElementChild; };
+      // ── pilihan beberapa sel (seret) ──
+      let pilihan = null;   // { t, r1, c1, r2, c2, cells:[] }
+      const hapusPilihan = () => { page.querySelectorAll('.csel').forEach(x => x.classList.remove('csel')); pilihan = null; };
+      const pilihKotak = (a, b) => {
+        const t = a.closest('table');
+        if (!t || t !== b.closest('table')) return;
+        const M = peta(t);
+        let r1 = Math.min(a._r, b._r), c1 = Math.min(a._c, b._c);
+        let r2 = Math.max(a._r + (a.rowSpan || 1) - 1, b._r + (b.rowSpan || 1) - 1), c2 = Math.max(a._c + (a.colSpan || 1) - 1, b._c + (b.colSpan || 1) - 1);
+        let ubah = true;
+        while (ubah) {   // perluas sampai tidak ada sel gabungan yang terpotong
+          ubah = false;
+          for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
+            const x = M[r] && M[r][c]; if (!x) continue;
+            const xr2 = x._r + (x.rowSpan || 1) - 1, xc2 = x._c + (x.colSpan || 1) - 1;
+            if (x._r < r1) { r1 = x._r; ubah = true; } if (x._c < c1) { c1 = x._c; ubah = true; }
+            if (xr2 > r2) { r2 = xr2; ubah = true; } if (xc2 > c2) { c2 = xc2; ubah = true; }
+          }
+        }
+        const cells = [];
+        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const x = M[r] && M[r][c]; if (x && cells.indexOf(x) < 0) cells.push(x); }
+        page.querySelectorAll('.csel').forEach(x => x.classList.remove('csel'));
+        cells.forEach(x => x.classList.add('csel'));
+        pilihan = cells.length > 1 ? { t: t, r1: r1, c1: c1, r2: r2, c2: c2, cells: cells } : null;
+      };
+      const isiAda = c => !!(c.textContent.replace(/​/g, '').trim() || c.querySelector('img'));
+      const gabung = (t, r1, c1, r2, c2) => {
+        const M = peta(t);
+        const utama = M[r1][c1];
+        const lain = [];
+        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const x = M[r] && M[r][c]; if (x && x !== utama && lain.indexOf(x) < 0) lain.push(x); }
+        lain.forEach(x => {
+          if (isiAda(x)) { if (isiAda(utama)) utama.appendChild(document.createElement('br')); while (x.firstChild) utama.appendChild(x.firstChild); }
+          x.remove();
+        });
+        setSpan(utama, 'colspan', c2 - c1 + 1); setSpan(utama, 'rowspan', r2 - r1 + 1);
+        utama.classList.remove('csel');
+        rapikanTabel(t);
+        return utama.isConnected ? utama : null;
+      };
+      const pisah = cell => {
+        const t = cell.closest('table'); peta(t);
+        const r0 = cell._r, c0 = cell._c, cs = cell.colSpan || 1, rs = cell.rowSpan || 1;
+        if (cs < 2 && rs < 2) return cell;
+        setSpan(cell, 'colspan', 1); setSpan(cell, 'rowspan', 1);
+        const rows = t.rows;
+        for (let r = r0; r < r0 + rs; r++) for (let c = c0; c < c0 + cs; c++) {
+          if (r === r0 && c === c0) continue;
+          if (rows[r]) sisipDi(rows[r], c, selBaru(cell.nodeName === 'TH' && r === r0 ? 'th' : 'td'));
+        }
+        return cell;
+      };
+      // ── operasi baris & kolom (aman untuk sel gabungan) ──
+      const tambahBaris = (cell, bawah) => {
+        const t = cell.closest('table'), M = peta(t), n = nKolom(M);
+        const r = bawah ? cell._r + (cell.rowSpan || 1) - 1 : cell._r;
+        const tr = document.createElement('tr');
+        const seen = new Set();
+        let fokus = null;
+        for (let c = 0; c < n; c++) {
+          const x = M[r] && M[r][c];
+          const xr2 = x ? x._r + (x.rowSpan || 1) - 1 : r;
+          const menembus = x && (bawah ? xr2 > r : x._r < r);
+          if (menembus) { if (!seen.has(x)) { seen.add(x); setSpan(x, 'rowspan', (x.rowSpan || 1) + 1); } continue; }
+          const b = selBaru('td'); tr.appendChild(b); if (!fokus || c === cell._c) fokus = b;
+        }
+        if (bawah) t.rows[r].after(tr); else t.rows[r].before(tr);
+        return tr.cells.length ? fokus : cell;
+      };
+      const tambahKolom = (cell, kanan) => {
+        const t = cell.closest('table'), M = peta(t);
+        const c = kanan ? cell._c + (cell.colSpan || 1) - 1 : cell._c;
+        const cg = colgroup(t, false);
+        const seen = new Set();
+        let fokus = null;
+        Array.from(t.rows).forEach((tr, r) => {
+          const x = M[r] && M[r][c];
+          if (!x) { const b = selBaru('td'); tr.appendChild(b); return; }
+          const xc2 = x._c + (x.colSpan || 1) - 1;
+          const menembus = kanan ? xc2 > c : x._c < c;
+          if (menembus) { if (!seen.has(x)) { seen.add(x); setSpan(x, 'colspan', (x.colSpan || 1) + 1); } return; }
+          if (x._r !== r) return;   // baris ini tertutup rowspan: sel baru di baris asal ikut ber-rowspan sama
+          if (seen.has(x)) return;
+          seen.add(x);
+          const b = selBaru(x.nodeName === 'TH' ? 'th' : 'td');
+          if (kanan) x.after(b); else x.before(b);
+          if (x.rowSpan > 1) setSpan(b, 'rowspan', x.rowSpan);
+          if (x === cell) fokus = b;
+        });
+        if (cg) { const w = lebar(cg); const i = c; const bagi = (w[i] || 10) / 2; w[i] = bagi; w.splice(kanan ? i + 1 : i, 0, bagi); const col = document.createElement('col'); cg.children[i].after(col); aturLebar(cg, w); }
+        return fokus || cell;
+      };
+      const hapusBaris = cell => {
+        const t = cell.closest('table');
+        if (t.rows.length <= 1) return hapusTabel(cell);
+        const M = peta(t), r = cell._r, tr = t.rows[r], next = t.rows[r + 1];
+        const seen = new Set();
+        (M[r] || []).forEach((x, c) => {
+          if (!x || seen.has(x)) return; seen.add(x);
+          if ((x.rowSpan || 1) > 1) {
+            if (x._r === r && next) { setSpan(x, 'rowspan', x.rowSpan - 1); sisipDi(next, c, x); }
+            else setSpan(x, 'rowspan', x.rowSpan - 1);
+          }
+        });
+        tr.remove();
+        rapikanTabel(t);
+        const tr2 = t.isConnected ? (t.rows[Math.min(r, t.rows.length - 1)]) : null;
+        return tr2 ? tr2.cells[0] : null;
+      };
+      const hapusKolom = cell => {
+        const t = cell.closest('table'), M = peta(t), c = cell._c;
+        if (nKolom(M) <= 1) return hapusTabel(cell);
+        const cg = colgroup(t, false);
+        const seen = new Set();
+        Array.from(t.rows).forEach((tr, r) => {
+          const x = M[r] && M[r][c];
+          if (!x || seen.has(x)) return; seen.add(x);
+          if ((x.colSpan || 1) > 1) setSpan(x, 'colspan', x.colSpan - 1); else x.remove();
+        });
+        if (cg) { const w = lebar(cg); const hilang = w.splice(c, 1)[0] || 0; if (w.length) w[Math.max(0, c - 1)] += hilang; cg.children[c].remove(); aturLebar(cg, w); }
+        rapikanTabel(t);
+        if (!t.isConnected) return null;
+        const tr = t.rows[Math.min(cell._r || 0, t.rows.length - 1)];
+        return tr ? tr.cells[Math.max(0, Math.min(tr.cells.length - 1, 0))] : null;
+      };
+      const hapusTabel = c => {
+        const t = c.closest('table'), p = document.createElement('p'); p.innerHTML = '<br>';
+        t.replaceWith(p);
+        const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); saved = r.cloneRange();
+        return null;
+      };
+      const ubahLebarKolom = (cell, delta) => {
+        const t = cell.closest('table'); peta(t);
+        const cg = colgroup(t, true), w = lebar(cg), i = cell._c + (cell.colSpan || 1) - 1, j = i + 1 < w.length ? i + 1 : i - 1;
+        if (j < 0) return cell;
+        const d = Math.max(-(w[i] - 4), Math.min(w[j] - 4, delta));
+        w[i] += d; w[j] -= d; aturLebar(cg, w);
+        return cell;
+      };
+      const ubahTinggiBaris = (cell, delta) => {
+        const tr = cell.closest('tr');
+        const h = Math.max(24, (parseFloat(tr.style.height) || tr.getBoundingClientRect().height) + delta);
+        tr.style.height = Math.round(h) + 'px';
+        return cell;
+      };
       const AKSI_TABEL = {
-        barisAtas: c => { const tr = c.parentElement, n = document.createElement('tr'); Array.from(tr.children).forEach(x => { const b = selBaru(x.nodeName === 'TH' && tr.parentElement.firstElementChild === tr ? 'td' : 'td'); if (x.getAttribute('colspan')) b.setAttribute('colspan', x.getAttribute('colspan')); n.appendChild(b); }); tr.before(n); return n.cells[c.cellIndex] || n.firstElementChild; },
-        barisBawah: c => { const tr = c.parentElement, n = document.createElement('tr'); Array.from(tr.children).forEach(x => { const b = selBaru('td'); if (x.getAttribute('colspan')) b.setAttribute('colspan', x.getAttribute('colspan')); n.appendChild(b); }); tr.after(n); return n.cells[c.cellIndex] || n.firstElementChild; },
-        kolomKiri: c => { const x = kolomDari(c); let hasil = null; c.closest('table').querySelectorAll('tr').forEach(tr => { const ref = selPada(tr, x); const b = selBaru(ref.nodeName === 'TH' ? 'th' : 'td'); ref.before(b); if (tr === c.parentElement) hasil = b; }); return hasil; },
-        kolomKanan: c => { const x = kolomDari(c); let hasil = null; c.closest('table').querySelectorAll('tr').forEach(tr => { const ref = selPada(tr, x); const b = selBaru(ref.nodeName === 'TH' ? 'th' : 'td'); ref.after(b); if (tr === c.parentElement) hasil = b; }); return hasil; },
-        hapusBaris: c => {
-          const t = c.closest('table'), tr = c.parentElement;
-          if (t.querySelectorAll('tr').length <= 1) return AKSI_TABEL.hapusTabel(c);
-          const nx = tr.nextElementSibling || tr.previousElementSibling; tr.remove();
-          return nx ? (nx.cells[Math.min(c.cellIndex, nx.cells.length - 1)] || nx.firstElementChild) : null;
-        },
-        hapusKolom: c => {
-          const t = c.closest('table'), x = kolomDari(c);
-          if (Array.from(t.querySelectorAll('tr')).every(tr => tr.children.length <= 1)) return AKSI_TABEL.hapusTabel(c);
-          t.querySelectorAll('tr').forEach(tr => { if (tr.children.length > 1) selPada(tr, x).remove(); });
-          const tr = c.isConnected ? c.parentElement : t.querySelector('tr');
-          return tr ? selPada(tr, Math.max(0, x - 1)) : null;
-        },
+        barisAtas: c => tambahBaris(c, false),
+        barisBawah: c => tambahBaris(c, true),
+        kolomKiri: c => tambahKolom(c, false),
+        kolomKanan: c => tambahKolom(c, true),
+        hapusBaris: hapusBaris,
+        hapusKolom: hapusKolom,
         judul: c => {
-          const tr = c.closest('table').querySelector('tr');
-          const jadiTh = Array.from(tr.children).some(x => x.nodeName === 'TD');
-          Array.from(tr.children).forEach(x => { const n = document.createElement(jadiTh ? 'th' : 'td'); Array.from(x.attributes).forEach(a => n.setAttribute(a.name, a.value)); while (x.firstChild) n.appendChild(x.firstChild); x.replaceWith(n); });
-          return tr.children[0];
+          const tr = c.closest('table').rows[0];
+          const jadiTh = Array.from(tr.cells).some(x => x.nodeName === 'TD');
+          Array.from(tr.cells).forEach(x => { const n = document.createElement(jadiTh ? 'th' : 'td'); Array.from(x.attributes).forEach(a => n.setAttribute(a.name, a.value)); while (x.firstChild) n.appendChild(x.firstChild); x.replaceWith(n); });
+          return tr.cells[0];
         },
-        hapusTabel: c => {
-          const t = c.closest('table'), p = document.createElement('p'); p.innerHTML = '<br>';
-          t.replaceWith(p);
-          const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); saved = r.cloneRange();
-          return null;
-        },
+        hapusTabel: hapusTabel,
+        gabungPilihan: () => { if (!pilihan) return null; const p = pilihan; hapusPilihan(); return gabung(p.t, p.r1, p.c1, p.r2, p.c2); },
+        gabungKanan: c => { const t = c.closest('table'), M = peta(t), c2 = c._c + (c.colSpan || 1); const x = M[c._r] && M[c._r][c2]; if (!x) { App.toast('Tidak ada sel di sebelah kanan.', 'warn'); return c; } const a = c, b = x; pilihKotak(a, b); const p = pilihan; hapusPilihan(); return p ? gabung(p.t, p.r1, p.c1, p.r2, p.c2) : c; },
+        gabungBawah: c => { const t = c.closest('table'), M = peta(t), r2 = c._r + (c.rowSpan || 1); const x = M[r2] && M[r2][c._c]; if (!x) { App.toast('Tidak ada sel di bawahnya.', 'warn'); return c; } pilihKotak(c, x); const p = pilihan; hapusPilihan(); return p ? gabung(p.t, p.r1, p.c1, p.r2, p.c2) : c; },
+        pisah: pisah,
+        lebarTambah: c => ubahLebarKolom(c, 5),
+        lebarKurang: c => ubahLebarKolom(c, -5),
+        tinggiTambah: c => ubahTinggiBaris(c, 12),
+        tinggiKurang: c => ubahTinggiBaris(c, -12),
+        tinggiOtomatis: c => { const tr = c.closest('tr'); tr.style.height = ''; if (!tr.getAttribute('style')) tr.removeAttribute('style'); return c; },
+        samakanLebar: c => { const cg = colgroup(c.closest('table'), false); if (cg) cg.remove(); return c; },
       };
-      const aksiTabel = k => { const c = sel(); if (!c) return; const nx = AKSI_TABEL[k](c); if (nx) taruh(nx); sinkron(); status(); };
+      const aksiTabel = k => {
+        const c = sel() || (pilihan && pilihan.cells[0]);
+        if (!c) return;
+        const nx = AKSI_TABEL[k](c);
+        if (nx && nx.isConnected) taruh(nx);
+        sinkron(); status();
+      };
+
+      // ── seret untuk memilih beberapa sel / mengubah ukuran kolom & baris ──
+      const ZONA = 5;
+      const zonaUbah = e => {
+        const t = e.target.closest && e.target.closest('table');
+        if (!t || !page.contains(t)) return null;
+        const R = t.getBoundingClientRect();
+        // batas kolom (dalam): dari posisi sel baris yang dilewati kursor
+        const tr = e.target.closest('tr');
+        if (tr) {
+          const cells = Array.from(tr.cells);
+          for (let i = 0; i < cells.length; i++) {
+            const cr = cells[i].getBoundingClientRect();
+            if (Math.abs(e.clientX - cr.right) <= ZONA && cr.right < R.right - ZONA && e.clientY >= cr.top && e.clientY <= cr.bottom) return { jenis: 'kolom', t: t, cell: cells[i] };
+          }
+        }
+        const rows = Array.from(t.rows);
+        for (let i = 0; i < rows.length; i++) {
+          const rr = rows[i].getBoundingClientRect();
+          if (Math.abs(e.clientY - rr.bottom) <= ZONA && e.clientX >= R.left && e.clientX <= R.right) return { jenis: 'baris', t: t, tr: rows[i] };
+        }
+        return null;
+      };
+      let seret = null;
+      page.addEventListener('mousemove', e => {
+        if (seret) return;
+        const z = zonaUbah(e);
+        page.style.cursor = z ? (z.jenis === 'kolom' ? 'col-resize' : 'row-resize') : '';
+      });
+      page.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        const z = zonaUbah(e);
+        if (z) {
+          e.preventDefault();
+          hapusPilihan();
+          if (z.jenis === 'kolom') {
+            peta(z.t);
+            const cg = colgroup(z.t, true), w = lebar(cg), i = z.cell._c + (z.cell.colSpan || 1) - 1;
+            seret = { jenis: 'kolom', t: z.t, cg: cg, w0: w, i: i, x0: e.clientX, lebarPx: z.t.getBoundingClientRect().width };
+          } else {
+            seret = { jenis: 'baris', tr: z.tr, y0: e.clientY, h0: z.tr.getBoundingClientRect().height };
+          }
+          document.body.classList.add('tbl-seret');
+          return;
+        }
+        const cell = e.target.closest && e.target.closest('td,th');
+        if (e.shiftKey && cell && page.contains(cell)) {
+          const awal = sel();
+          if (awal && awal !== cell && awal.closest('table') === cell.closest('table')) { e.preventDefault(); peta(cell.closest('table')); pilihKotak(awal, cell); return; }
+        }
+        hapusPilihan();
+        if (cell && page.contains(cell)) seret = { jenis: 'pilih', awal: cell };
+      });
+      const onMove = e => {
+        if (!seret) return;
+        if (seret.jenis === 'kolom') {
+          const w = seret.w0.slice(), i = seret.i, j = i + 1;
+          if (j >= w.length) return;
+          const d0 = (e.clientX - seret.x0) / seret.lebarPx * 100;
+          const d = Math.max(-(w[i] - 4), Math.min(w[j] - 4, d0));
+          w[i] += d; w[j] -= d; aturLebar(seret.cg, w);
+        } else if (seret.jenis === 'baris') {
+          seret.tr.style.height = Math.max(24, Math.round(seret.h0 + e.clientY - seret.y0)) + 'px';
+        } else if (seret.jenis === 'pilih') {
+          const el2 = document.elementFromPoint(e.clientX, e.clientY);
+          const cell = el2 && el2.closest && el2.closest('td,th');
+          if (cell && cell !== seret.awal && page.contains(cell) && cell.closest('table') === seret.awal.closest('table')) {
+            peta(cell.closest('table'));
+            pilihKotak(seret.awal, cell);
+            const s = getSelection(); if (s.rangeCount) s.collapse(cell, 0);
+          }
+        }
+      };
+      const onUp = () => {
+        if (!seret) return;
+        const j = seret.jenis;
+        seret = null;
+        document.body.classList.remove('tbl-seret');
+        if (j === 'kolom' || j === 'baris') sinkron();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      bersih.push(() => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); });
+      if (!opt.embedded) App.onLeave(() => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); });
+      page.addEventListener('keydown', e => { if (pilihan && !/^(Shift|Control|Meta|Alt)$/.test(e.key)) hapusPilihan(); });
 
       // ── Popover menu ──
       const tutupPop = () => { pop.classList.add('hidden'); pop.innerHTML = ''; pop._for = null; };
@@ -536,19 +812,32 @@
           p.querySelectorAll('[data-g]').forEach(b => { b.onclick = () => { pulihkan(); jadikanDaftar('OL', b.getAttribute('data-g')); tutupPop(); }; });
         }),
         tabel: btn => {
-          const c = sel();
-          const aksi = c ? '<div class="pop-title">Tabel ini</div>' + [['barisAtas', '↑ Sisipkan baris di atas'], ['barisBawah', '↓ Sisipkan baris di bawah'], ['kolomKiri', '← Sisipkan kolom di kiri'], ['kolomKanan', '→ Sisipkan kolom di kanan'],
-            ['judul', '▤ Baris pertama jadi judul (tebal)'], ['hapusBaris', '✕ Hapus baris'], ['hapusKolom', '✕ Hapus kolom'], ['hapusTabel', '🗑 Hapus tabel']]
-            .map(x => '<button type="button" class="pop-item" data-ta="' + x[0] + '"' + (/^hapus/.test(x[0]) ? ' style="color:var(--err)"' : '') + '>' + x[1] + '</button>').join('') + '<div class="pop-sep"></div>' : '';
-          bukaPop(btn, aksi + '<div class="pop-title">Sisipkan tabel' + (c ? ' baru (di bawah tabel ini)' : '') + '</div><div class="tbl-grid" data-grid>' +
-            Array.from({ length: 48 }, (_, i) => '<i data-r="' + (Math.floor(i / 8) + 1) + '" data-k="' + (i % 8 + 1) + '"></i>').join('') + '</div><div class="tbl-size" data-sz>Pilih ukuran tabel</div>', p => {
+          const c = sel() || (pilihan && pilihan.cells[0]);
+          const item = (k, t, bahaya) => '<button type="button" class="pop-item" data-ta="' + k + '"' + (bahaya ? ' style="color:var(--err)"' : '') + '>' + t + '</button>';
+          let aksi = '';
+          if (c) {
+            const gabungan = (c.colSpan || 1) > 1 || (c.rowSpan || 1) > 1;
+            aksi = (pilihan ? '<div class="pop-title">' + pilihan.cells.length + ' sel dipilih</div>' + item('gabungPilihan', '⊞ Gabungkan ' + pilihan.cells.length + ' sel') + '<div class="pop-sep"></div>' : '') +
+              '<div class="pop-title">Baris & kolom</div><div class="pop-grid2">' +
+              item('barisAtas', '↑ Baris di atas') + item('barisBawah', '↓ Baris di bawah') + item('kolomKiri', '← Kolom di kiri') + item('kolomKanan', '→ Kolom di kanan') + '</div>' +
+              '<div class="pop-title">Gabung sel</div><div class="pop-grid2">' + item('gabungKanan', '⇥ Dengan sel kanan') + item('gabungBawah', '⤓ Dengan sel bawah') + '</div>' +
+              (gabungan ? item('pisah', '⊟ Pisahkan sel') : '') +
+              '<div class="pop-title">Ukuran <small>(atau tarik garis tabel)</small></div><div class="pop-grid2">' +
+              item('lebarTambah', '⟷ Kolom lebih lebar') + item('lebarKurang', '→← Kolom lebih sempit') + item('tinggiTambah', '↕ Baris lebih tinggi') + item('tinggiKurang', '⇳ Baris lebih rendah') + '</div>' +
+              '<div class="pop-grid2">' + item('samakanLebar', '▥ Samakan lebar kolom') + item('tinggiOtomatis', '▤ Tinggi baris otomatis') + '</div>' +
+              '<div class="pop-sep"></div>' + item('judul', '▤ Baris pertama jadi judul (tebal)') +
+              '<div class="pop-grid2">' + item('hapusBaris', '✕ Hapus baris', 1) + item('hapusKolom', '✕ Hapus kolom', 1) + '</div>' + item('hapusTabel', '🗑 Hapus tabel', 1) + '<div class="pop-sep"></div>';
+          }
+          bukaPop(btn, '<div class="pop-tabel">' + aksi + '<div class="pop-title">Sisipkan tabel' + (c ? ' baru (di bawah tabel ini)' : '') + '</div><div class="tbl-grid" data-grid>' +
+            Array.from({ length: 48 }, (_, i) => '<i data-r="' + (Math.floor(i / 8) + 1) + '" data-k="' + (i % 8 + 1) + '"></i>').join('') + '</div><div class="tbl-size" data-sz>Pilih ukuran tabel</div>' +
+            (c ? '' : '<div class="tbl-tip">Tips: seret beberapa sel lalu pilih <b>Gabungkan</b>; tarik garis tabel untuk mengubah lebar kolom / tinggi baris.</div>') + '</div>', p => {
             p.querySelectorAll('[data-ta]').forEach(b => { b.onclick = () => { tutupPop(); aksiTabel(b.getAttribute('data-ta')); }; });
             const sel0 = p.querySelectorAll('[data-grid] i');
             const tandai = (r, k) => { sel0.forEach(x => x.classList.toggle('on', +x.getAttribute('data-r') <= r && +x.getAttribute('data-k') <= k)); p.querySelector('[data-sz]').textContent = k + ' kolom × ' + r + ' baris'; };
             sel0.forEach(x => {
               x.addEventListener('mouseenter', () => tandai(+x.getAttribute('data-r'), +x.getAttribute('data-k')));
               x.addEventListener('mousedown', e => e.preventDefault());
-              x.onclick = () => { const r = +x.getAttribute('data-r'), k = +x.getAttribute('data-k'); tutupPop(); sisipTabel(r, k); };
+              x.onclick = () => { const r = +x.getAttribute('data-r'), k = +x.getAttribute('data-k'); tutupPop(); hapusPilihan(); sisipTabel(r, k); };
             });
           });
         },
@@ -669,7 +958,7 @@
           const c = sel(), semua = Array.from(c.closest('table').querySelectorAll('td,th')), i = semua.indexOf(c);
           if (e.shiftKey) { if (i > 0) taruh(semua[i - 1], true); return; }
           if (i < semua.length - 1) { taruh(semua[i + 1], true); return; }
-          taruh(AKSI_TABEL.barisBawah(c).parentElement.firstElementChild); sinkron(); return;
+          const nb = tambahBaris(c, true); taruh(nb && nb.parentElement ? nb.parentElement.cells[0] : nb); sinkron(); return;
         }
         if (e.key === 'Tab') {
           e.preventDefault();

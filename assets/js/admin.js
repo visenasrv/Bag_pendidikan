@@ -35,12 +35,13 @@
         view.innerHTML =
           '<div class="adm">' +
           '<aside class="sidebar"><div class="brand">' + App.logo.html('kiri') + '<div><b>Musyawaroh</b><small>Bagian Pendidikan</small></div></div>' +
-          '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
-          '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
-          '<a class="nav-item" href="#/" data-home style="justify-content:center">' + icon('home') + ' Tampilan Utama</a>' +
-          '<button class="nav-item" data-pwa-install hidden style="justify-content:center">' + icon('download') + ' Instal Aplikasi</button>' +
-          '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.7.2 · Sangatta Selatan</div></div></aside>' +
+          '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '" title="' + n.t + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
+          '<div class="bottom"><button class="nav-item sb-toggle" data-mini title="Sembunyikan tulisan menu">' + icon('chevL') + '<span>Sembunyikan tulisan</span></button>' +
+          '<div class="row sb-dark" title="Mode gelap"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + ' aria-label="Mode gelap"></label></div>' +
+          '<a class="nav-item" href="#/" data-home style="justify-content:center" title="Tampilan Utama">' + icon('home') + '<span>Tampilan Utama</span></a>' +
+          '<button class="nav-item" data-pwa-install hidden style="justify-content:center" title="Instal Aplikasi">' + icon('download') + '<span>Instal Aplikasi</span></button>' +
+          '<button class="nav-item" data-logout style="justify-content:center" title="Keluar">' + icon('logout') + '<span>Keluar</span></button>' +
+          '<div class="ver">v1.7.3 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
@@ -54,6 +55,16 @@
         A.shell.querySelectorAll('[data-nav]').forEach(b => { b.onclick = () => App.go(NAV.find(n => n.k === b.getAttribute('data-nav')).p); });
         A.shell.querySelector('[data-dark]').onchange = e => App.theme.set(e.target.checked ? 'dark' : 'light');
         A.shell.querySelector('[data-logout]').onclick = logout;
+        // v1.7.3: menu samping bisa diperkecil (ikon saja)
+        const mini = A.shell.querySelector('[data-mini]');
+        const setMini = on => {
+          document.documentElement.classList.toggle('sb-mini', on);
+          mini.title = on ? 'Tampilkan tulisan menu' : 'Sembunyikan tulisan menu';
+          mini.querySelector('span').textContent = on ? 'Tampilkan tulisan' : 'Sembunyikan tulisan';
+          mini.setAttribute('aria-pressed', on ? 'true' : 'false');
+        };
+        setMini(!!App.ls.get('mp_sb_mini'));
+        mini.onclick = () => { const on = !document.documentElement.classList.contains('sb-mini'); App.ls.set('mp_sb_mini', on ? 1 : 0); setMini(on); };
         App.idle(() => App.auth.perpanjang());
         A.shell.querySelector('[data-me]').onclick = menuAkun;
         A.shell.querySelector('[data-more]').onclick = menuLainnya;
