@@ -123,6 +123,7 @@
     indent: 'M3 21h18v-2H3v2zM3 8v8l4-4-4-4zm8 9h10v-2H11v2zM3 3v2h18V3H3zm8 6h10V7H11v2zm0 4h10v-2H11v2z',
     clear: 'M3.27 5 2 6.27l6.97 6.97L6.5 19h3l1.57-3.66L16.73 21 18 19.73 3.55 5.27 3.27 5zM6 5v.18L8.82 8h2.4l-.72 1.68 2.1 2.1L14.21 8H20V5H6z',
     hr: 'M3 11h18v2H3z',
+    table: 'M20 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 2v3H5V5h15zm-5 14h-5v-9h5v9zM5 10h3v9H5v-9zm12 9v-9h3v9h-3z',
     caret: 'M7 10l5 5 5-5z',
     minus: 'M19 13H5v-2h14v2z',
     plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
@@ -219,7 +220,8 @@
         tb('bold', 'bold', 'Tebal (Ctrl+B)') + tb('italic', 'italic', 'Miring (Ctrl+I)') + tb('underline', 'underline', 'Garis bawah (Ctrl+U)') + tb('strikeThrough', 'strike', 'Coret') +
         '<button type="button" class="tb" data-menu="warna" title="Warna teks" aria-label="Warna teks">' + svg('color', '<rect x="3" y="19" width="18" height="4" rx="1" data-bar fill="#000000"/>') + '</button>' +
         '<button type="button" class="tb" data-menu="stabilo" title="Warna stabilo" aria-label="Warna stabilo">' + svg('hilite', '<rect x="3" y="19" width="18" height="4" rx="1" data-hbar fill="#FFFF00"/>') + '</button>' + sep +
-        tb('link', 'link', 'Sisipkan tautan (Ctrl+K)') + '<button type="button" class="tb" disabled title="Komentar (tidak tersedia)" aria-label="Komentar">' + svg('comment') + '</button>' + tb('gambar', 'image', 'Sisipkan gambar') + sep +
+        tb('link', 'link', 'Sisipkan tautan (Ctrl+K)') + '<button type="button" class="tb" disabled title="Komentar (tidak tersedia)" aria-label="Komentar">' + svg('comment') + '</button>' + tb('gambar', 'image', 'Sisipkan gambar') +
+        '<button type="button" class="tb" data-menu="tabel" title="Tabel" aria-label="Tabel">' + svg('table') + '</button>' + sep +
         '<button type="button" class="tb wide" data-menu="rata" title="Rata & indentasi" aria-label="Perataan"><span data-rataico>' + svg('left') + '</span>' + svg('caret') + '</button>' +
         '<button type="button" class="tb" data-menu="spasi" title="Spasi baris & paragraf" aria-label="Spasi baris">' + svg('spacing') + '</button>' +
         tbDrop('checklist', 'check', 'Checklist') + tbDrop('bullet', 'bullet', 'Daftar berbutir') + tbDrop('nomor', 'number', 'Daftar bernomor') +
@@ -327,6 +329,7 @@
         q('[data-cmd="checklist"]').classList.toggle('on', !!(l && l.classList.contains('checklist')));
         q('[data-cmd="bullet"]').classList.toggle('on', !!(l && l.nodeName === 'UL' && !l.classList.contains('checklist')));
         q('[data-cmd="nomor"]').classList.toggle('on', !!(l && l.nodeName === 'OL'));
+        q('[data-menu="tabel"]').classList.toggle('on', !!sel());
         const cs = getComputedStyle(n);
         const blok = n.closest('h1,h2,h3');
         q('[data-gaya]').value = blok ? blok.nodeName : 'P';
@@ -410,6 +413,77 @@
         jadikanDaftar(jenis);
       };
 
+      // ── Tabel (v1.7.2) ──
+      const sel = () => { const n = elSel(); const c = n && n.closest('td,th'); return c && page.contains(c) ? c : null; };
+      const taruh = (cell, akhir) => {
+        if (!cell) return;
+        const r = document.createRange(); r.selectNodeContents(cell); r.collapse(!akhir);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r); saved = r.cloneRange(); page.focus({ preventScroll: true });
+      };
+      const selBaru = tag => { const c = document.createElement(tag); c.innerHTML = '<br>'; return c; };
+      const sisipTabel = (br, kl) => {
+        pulihkan();
+        const t = document.createElement('table');
+        const tb = document.createElement('tbody');
+        for (let i = 0; i < br; i++) { const tr = document.createElement('tr'); for (let j = 0; j < kl; j++) tr.appendChild(selBaru('td')); tb.appendChild(tr); }
+        t.appendChild(tb);
+        const p = document.createElement('p'); p.innerHTML = '<br>';
+        const ada = sel();
+        if (ada) { const tabel = ada.closest('table'); tabel.after(t); t.after(p); }
+        else {
+          const s = getSelection();
+          let blok = elSel() && elSel().closest('p,h1,h2,h3,h4,li,blockquote,div');
+          if (blok && !page.contains(blok)) blok = null;
+          if (blok && blok.closest('li')) blok = blok.closest('ul,ol');
+          if (blok && blok !== page) {
+            const kosong = !blok.textContent.replace(/\u200b/g, '').trim() && !blok.querySelector('img');
+            if (kosong && blok.nodeName === 'P') { blok.replaceWith(t); t.after(p); }
+            else { blok.after(t); t.after(p); }
+          } else if (s.rangeCount && dalam(s.anchorNode)) { const r = s.getRangeAt(0); r.collapse(false); r.insertNode(p); r.insertNode(t); }
+          else { page.appendChild(t); page.appendChild(p); }
+        }
+        taruh(t.querySelector('td'));
+        sinkron(); status();
+      };
+      const kolomDari = cell => {
+        // indeks kolom visual (memperhitungkan colspan)
+        let x = 0; for (let c = cell.parentElement.firstElementChild; c && c !== cell; c = c.nextElementSibling) x += +(c.getAttribute('colspan') || 1);
+        return x;
+      };
+      const selPada = (tr, x) => { let k = 0; for (let c = tr.firstElementChild; c; c = c.nextElementSibling) { const sp = +(c.getAttribute('colspan') || 1); if (x < k + sp) return c; k += sp; } return tr.lastElementChild; };
+      const AKSI_TABEL = {
+        barisAtas: c => { const tr = c.parentElement, n = document.createElement('tr'); Array.from(tr.children).forEach(x => { const b = selBaru(x.nodeName === 'TH' && tr.parentElement.firstElementChild === tr ? 'td' : 'td'); if (x.getAttribute('colspan')) b.setAttribute('colspan', x.getAttribute('colspan')); n.appendChild(b); }); tr.before(n); return n.cells[c.cellIndex] || n.firstElementChild; },
+        barisBawah: c => { const tr = c.parentElement, n = document.createElement('tr'); Array.from(tr.children).forEach(x => { const b = selBaru('td'); if (x.getAttribute('colspan')) b.setAttribute('colspan', x.getAttribute('colspan')); n.appendChild(b); }); tr.after(n); return n.cells[c.cellIndex] || n.firstElementChild; },
+        kolomKiri: c => { const x = kolomDari(c); let hasil = null; c.closest('table').querySelectorAll('tr').forEach(tr => { const ref = selPada(tr, x); const b = selBaru(ref.nodeName === 'TH' ? 'th' : 'td'); ref.before(b); if (tr === c.parentElement) hasil = b; }); return hasil; },
+        kolomKanan: c => { const x = kolomDari(c); let hasil = null; c.closest('table').querySelectorAll('tr').forEach(tr => { const ref = selPada(tr, x); const b = selBaru(ref.nodeName === 'TH' ? 'th' : 'td'); ref.after(b); if (tr === c.parentElement) hasil = b; }); return hasil; },
+        hapusBaris: c => {
+          const t = c.closest('table'), tr = c.parentElement;
+          if (t.querySelectorAll('tr').length <= 1) return AKSI_TABEL.hapusTabel(c);
+          const nx = tr.nextElementSibling || tr.previousElementSibling; tr.remove();
+          return nx ? (nx.cells[Math.min(c.cellIndex, nx.cells.length - 1)] || nx.firstElementChild) : null;
+        },
+        hapusKolom: c => {
+          const t = c.closest('table'), x = kolomDari(c);
+          if (Array.from(t.querySelectorAll('tr')).every(tr => tr.children.length <= 1)) return AKSI_TABEL.hapusTabel(c);
+          t.querySelectorAll('tr').forEach(tr => { if (tr.children.length > 1) selPada(tr, x).remove(); });
+          const tr = c.isConnected ? c.parentElement : t.querySelector('tr');
+          return tr ? selPada(tr, Math.max(0, x - 1)) : null;
+        },
+        judul: c => {
+          const tr = c.closest('table').querySelector('tr');
+          const jadiTh = Array.from(tr.children).some(x => x.nodeName === 'TD');
+          Array.from(tr.children).forEach(x => { const n = document.createElement(jadiTh ? 'th' : 'td'); Array.from(x.attributes).forEach(a => n.setAttribute(a.name, a.value)); while (x.firstChild) n.appendChild(x.firstChild); x.replaceWith(n); });
+          return tr.children[0];
+        },
+        hapusTabel: c => {
+          const t = c.closest('table'), p = document.createElement('p'); p.innerHTML = '<br>';
+          t.replaceWith(p);
+          const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); saved = r.cloneRange();
+          return null;
+        },
+      };
+      const aksiTabel = k => { const c = sel(); if (!c) return; const nx = AKSI_TABEL[k](c); if (nx) taruh(nx); sinkron(); status(); };
+
       // ── Popover menu ──
       const tutupPop = () => { pop.classList.add('hidden'); pop.innerHTML = ''; pop._for = null; };
       const bukaPop = (btn, html, bind) => {
@@ -461,6 +535,23 @@
           .map(x => '<button type="button" class="pop-item" data-g="' + x[0] + '">' + x[1] + '</button>').join(''), p => {
           p.querySelectorAll('[data-g]').forEach(b => { b.onclick = () => { pulihkan(); jadikanDaftar('OL', b.getAttribute('data-g')); tutupPop(); }; });
         }),
+        tabel: btn => {
+          const c = sel();
+          const aksi = c ? '<div class="pop-title">Tabel ini</div>' + [['barisAtas', '↑ Sisipkan baris di atas'], ['barisBawah', '↓ Sisipkan baris di bawah'], ['kolomKiri', '← Sisipkan kolom di kiri'], ['kolomKanan', '→ Sisipkan kolom di kanan'],
+            ['judul', '▤ Baris pertama jadi judul (tebal)'], ['hapusBaris', '✕ Hapus baris'], ['hapusKolom', '✕ Hapus kolom'], ['hapusTabel', '🗑 Hapus tabel']]
+            .map(x => '<button type="button" class="pop-item" data-ta="' + x[0] + '"' + (/^hapus/.test(x[0]) ? ' style="color:var(--err)"' : '') + '>' + x[1] + '</button>').join('') + '<div class="pop-sep"></div>' : '';
+          bukaPop(btn, aksi + '<div class="pop-title">Sisipkan tabel' + (c ? ' baru (di bawah tabel ini)' : '') + '</div><div class="tbl-grid" data-grid>' +
+            Array.from({ length: 48 }, (_, i) => '<i data-r="' + (Math.floor(i / 8) + 1) + '" data-k="' + (i % 8 + 1) + '"></i>').join('') + '</div><div class="tbl-size" data-sz>Pilih ukuran tabel</div>', p => {
+            p.querySelectorAll('[data-ta]').forEach(b => { b.onclick = () => { tutupPop(); aksiTabel(b.getAttribute('data-ta')); }; });
+            const sel0 = p.querySelectorAll('[data-grid] i');
+            const tandai = (r, k) => { sel0.forEach(x => x.classList.toggle('on', +x.getAttribute('data-r') <= r && +x.getAttribute('data-k') <= k)); p.querySelector('[data-sz]').textContent = k + ' kolom × ' + r + ' baris'; };
+            sel0.forEach(x => {
+              x.addEventListener('mouseenter', () => tandai(+x.getAttribute('data-r'), +x.getAttribute('data-k')));
+              x.addEventListener('mousedown', e => e.preventDefault());
+              x.onclick = () => { const r = +x.getAttribute('data-r'), k = +x.getAttribute('data-k'); tutupPop(); sisipTabel(r, k); };
+            });
+          });
+        },
         lain: btn => bukaPop(btn, '<div class="pop-row">' + tb('outdent', 'outdent', 'Kurangi indentasi') + tb('indent', 'indent', 'Tambah indentasi') + tb('removeFormat', 'clear', 'Hapus format') + tb('insertHorizontalRule', 'hr', 'Garis horizontal') + '</div>', p => {
           p.querySelectorAll('[data-cmd]').forEach(b => { b.onclick = () => { perintah(b.getAttribute('data-cmd')); tutupPop(); }; });
         }),
@@ -572,6 +663,14 @@
         const mod = e.ctrlKey || e.metaKey;
         if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); simpan(); return; }
         if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); tautan(); return; }
+        if (e.key === 'Tab' && sel()) {
+          // pindah antar sel; Tab di sel terakhir menambah baris baru
+          e.preventDefault();
+          const c = sel(), semua = Array.from(c.closest('table').querySelectorAll('td,th')), i = semua.indexOf(c);
+          if (e.shiftKey) { if (i > 0) taruh(semua[i - 1], true); return; }
+          if (i < semua.length - 1) { taruh(semua[i + 1], true); return; }
+          taruh(AKSI_TABEL.barisBawah(c).parentElement.firstElementChild); sinkron(); return;
+        }
         if (e.key === 'Tab') {
           e.preventDefault();
           if (daftar()) exec(e.shiftKey ? 'outdent' : 'indent');

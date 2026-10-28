@@ -60,7 +60,7 @@
     const root = App.mount(
       '<div class="pub">' +
       '<section class="hero ' + (App.logo.get('banner') ? 'has-banner' : '') + '" data-banner style="' + App.logo.bannerStyle() + '"><div class="pattern"></div><div class="bar">' + App.logo.html('kiri') +
-      '<div class="right"><a class="icon-btn light admin-mini" href="#/admin" title="Masuk Admin" aria-label="Masuk Admin">' + icon('lock', 'sm') + '</a><button class="icon-btn light" data-theme aria-label="' + App.theme.label() + '" title="' + App.theme.label() + '">' + App.theme.icon() + '</button></div></div>' +
+      '<div class="right">' + (App.auth.valid() ? '<a class="btn btn-sm hero-admin" href="#/admin/dashboard" title="Kembali ke halaman admin">' + icon('grid', 'sm') + ' Admin</a>' : '<a class="icon-btn light admin-mini" href="#/admin" title="Masuk Admin" aria-label="Masuk Admin">' + icon('lock', 'sm') + '</a>') + '<button class="icon-btn light" data-theme aria-label="' + App.theme.label() + '" title="' + App.theme.label() + '">' + App.theme.icon() + '</button></div></div>' +
       '<h1 data-nama>' + esc(cfg0.namaAplikasi || 'Musyawaroh & Pelaporan Bagian Pendidikan') + '</h1><p data-sub>' + esc(cfg0.subjudul || 'PPG Kutai Timur · Desa Sangatta Selatan') + '</p></section>' +
       '<nav class="app-grid" aria-label="Menu">' + menu.map(m => '<a class="app-ico ' + (m[3] || '') + '" href="' + m[0] + '"><span class="ic">' + icon(m[1]) + '</span><span class="lb">' + m[2] + '</span></a>').join('') + '</nav>' +
       '<section class="card status-mini"><div class="sm-head"><div><small>Status Laporan</small><b>' + App.periode(per.bulan, per.tahun) + '</b></div><span class="sm-count" data-count></span></div>' +

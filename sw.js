@@ -5,7 +5,7 @@
    • Update berversi       → naikkan VERSION (pakai scripts/bump_version.py)
    Letakkan file ini di ROOT aplikasi (satu folder dengan index.html).
    ========================================================================== */
-const VERSION = 'ppgss-v1.7.1';            // ← NAIKKAN setiap kali file frontend berubah
+const VERSION = 'ppgss-v1.7.2';            // ← NAIKKAN setiap kali file frontend berubah
 const SPA = true;                        // true = 1 halaman (routing #), false = banyak halaman .html
 const OFFLINE_PAGE = 'offline.html';     // cadangan bila halaman belum pernah di-cache
 
@@ -16,21 +16,21 @@ const SHELL = [
   'manifest.webmanifest',
   'offline.html',
   'pwa.js',
-  'config.js?v=1.7.1',
-  'assets/css/style.css?v=1.7.1',
-  'assets/js/core.js?v=1.7.1',
-  'assets/js/schema.js?v=1.7.1',
-  'assets/js/pdf.js?v=1.7.1',
-  'assets/js/form.js?v=1.7.1',
-  'assets/js/dash.js?v=1.7.1',
-  'assets/js/public.js?v=1.7.1',
-  'assets/js/notulen.js?v=1.7.1',
-  'assets/js/monitoring.js?v=1.7.1',
-  'assets/js/app.js?v=1.7.1',
-  'assets/js/admin.js?v=1.7.1',
-  'assets/js/hadir.js?v=1.7.1',
-  'assets/js/musyawaroh.js?v=1.7.1',
-  'assets/js/pengaturan.js?v=1.7.1',
+  'config.js?v=1.7.2',
+  'assets/css/style.css?v=1.7.2',
+  'assets/js/core.js?v=1.7.2',
+  'assets/js/schema.js?v=1.7.2',
+  'assets/js/pdf.js?v=1.7.2',
+  'assets/js/form.js?v=1.7.2',
+  'assets/js/dash.js?v=1.7.2',
+  'assets/js/public.js?v=1.7.2',
+  'assets/js/notulen.js?v=1.7.2',
+  'assets/js/monitoring.js?v=1.7.2',
+  'assets/js/app.js?v=1.7.2',
+  'assets/js/admin.js?v=1.7.2',
+  'assets/js/hadir.js?v=1.7.2',
+  'assets/js/musyawaroh.js?v=1.7.2',
+  'assets/js/pengaturan.js?v=1.7.2',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',

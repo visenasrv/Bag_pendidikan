@@ -37,12 +37,14 @@
           '<aside class="sidebar"><div class="brand">' + App.logo.html('kiri') + '<div><b>Musyawaroh</b><small>Bagian Pendidikan</small></div></div>' +
           '<nav class="gap-sm">' + NAV.map(n => '<button class="nav-item" data-nav="' + n.k + '">' + icon(n.i) + '<span>' + n.t + '</span>' + (n.k === 'laporan' ? '<span class="badge hidden" data-baru></span>' : '') + '</button>').join('') + '</nav>' +
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
+          '<a class="nav-item" href="#/" data-home style="justify-content:center">' + icon('home') + ' Tampilan Utama</a>' +
           '<button class="nav-item" data-pwa-install hidden style="justify-content:center">' + icon('download') + ' Instal Aplikasi</button>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.7 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.7.2 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
+          '<a class="btn btn-soft btn-sm top-home" href="#/" title="Ke tampilan utama (tanpa keluar)" aria-label="Ke tampilan utama">' + icon('home', 'sm') + '<span class="hide-m">Tampilan Utama</span></a>' +
           '<span id="sync" class="sync ok">' + icon('cloudCheck') + '<span>Tersimpan</span></span>' +
           '<button class="avatar" data-me title="Akun">' + esc(((B.set().username || App.auth.get() && App.auth.get().username || 'A') + '').slice(0, 2).toUpperCase()) + '</button>' +
           '</header><main class="adm-content" id="adm-content"></main></div>' +
@@ -145,7 +147,7 @@
     const a = App.auth.get() || {};
     const m = App.modal({
       title: 'Akun Admin', sub: 'Masuk sebagai ' + (a.username || '-') + ' · sesi berakhir ' + App.fmtWaktu(new Date(a.exp || Date.now()).toISOString()),
-      body: '<div class="stack"><a class="btn btn-soft btn-block" href="#/" data-x>' + icon('home') + ' Lihat Halaman Publik</a>' +
+      body: '<div class="stack"><a class="btn btn-soft btn-block" href="#/" data-x>' + icon('home') + ' Ke Tampilan Utama</a>' +
         '<button class="btn btn-soft btn-block" data-sync>' + icon('refresh') + ' Muat Ulang Data dari Server</button>' +
         '<button class="btn btn-danger btn-block" data-out>' + icon('logout') + ' Keluar</button></div>',
     });

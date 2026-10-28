@@ -101,6 +101,7 @@
     window.dispatchEvent(new CustomEvent('pwa:update', { detail: { apply: function () { worker.postMessage('SKIP_WAITING'); } } }));
   }
   function watch(r) {
+    if (!r) return;
     if (r.waiting && navigator.serviceWorker.controller) updateBar(r.waiting);
     r.addEventListener('updatefound', function () {
       var w = r.installing; if (!w) return;

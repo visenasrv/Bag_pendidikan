@@ -226,7 +226,7 @@
       const gap = this.lompat();
       if (gap.length) {
         const daftar = gap.length <= 3 ? gap.map(g => App.periode(g.bulan, g.tahun)).join(', ') : App.periode(gap[0].bulan, gap[0].tahun) + ' s.d. ' + App.periode(gap[gap.length - 1].bulan, gap[gap.length - 1].tahun) + ' (' + gap.length + ' bulan)';
-        return '<div class="notice warn">' + icon('alert') + '<div class="grow"><b>Ada bulan yang terlewat</b>Laporan ' + esc(kel ? kel.nama : '') + ' untuk <strong>' + esc(daftar) + '</strong> belum ada. Laporan terakhir: ' + esc(App.periode(this.cek.terakhir.bulan, this.cek.terakhir.tahun)) + '.' +
+        return '<div class="notice warn">' + icon('alert') + '<div class="grow"><b class="judul-merah">Laporan ' + esc(App.periode(gap[0].bulan, gap[0].tahun)) + ' Belum ada</b>Laporan ' + esc(kel ? kel.nama : '') + ' untuk <strong>' + esc(daftar) + '</strong> belum ada. Laporan terakhir: ' + esc(App.periode(this.cek.terakhir.bulan, this.cek.terakhir.tahun)) + '.' +
           (this.lompatOk === this.cekKey ? '<br>Anda memilih tetap mengisi ' + esc(per) + '.' : '') +
           '<button type="button" class="btn btn-sm btn-block lompat-btn" data-isi-lewat>' + icon('edit') + ' Isi ' + esc(App.periode(gap[0].bulan, gap[0].tahun)) + ' dulu</button></div></div>';
       }
@@ -251,7 +251,7 @@
       const g0 = App.periode(gap[0].bulan, gap[0].tahun);
       const kel = (this.o.kelompok || []).find(k => k.id === this.data.KelompokID);
       const ok = await App.confirm({
-        title: 'Laporan ' + g0 + ' belum ada',
+        title: 'Laporan ' + g0 + ' Belum ada', tone: 'warn',
         html: 'Laporan <b>' + esc(kel ? kel.nama : '') + '</b> untuk <b>' + esc(gap.map(g => App.periode(g.bulan, g.tahun)).slice(0, 6).join(', ') + (gap.length > 6 ? ', …' : '')) + '</b> belum dikirim, tetapi Anda memilih <b>' + esc(per) + '</b>.' +
           '<br><span class="muted" style="font-size:13px">Ingat: yang dilaporkan adalah bulan yang KBM-nya sudah berjalan penuh.</span><br><br>Tetap isi laporan <b>' + esc(per) + '</b>?',
         ok: 'Iya, tetap ' + per, cancel: 'Tidak, isi ' + g0,

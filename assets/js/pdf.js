@@ -30,6 +30,7 @@
   const TAG_OK = {
     B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, BR: 1, DIV: 1, P: 1, SPAN: 1, FONT: 1, SUB: 1, SUP: 1,
     H1: 1, H2: 1, H3: 1, H4: 1, OL: 1, UL: 1, LI: 1, BLOCKQUOTE: 1, HR: 1, A: 1, IMG: 1,
+    TABLE: 1, THEAD: 1, TBODY: 1, TFOOT: 1, TR: 1, TD: 1, TH: 1,   // v1.7.2: tabel di notulen
   };
   const CSS_OK = ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration-line', 'font-size', 'font-family', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'list-style-type'];
   const nilaiAman = v => v && !/url\s*\(|expression|javascript|[<>{};]/i.test(v);
@@ -54,6 +55,7 @@
         if (ch.nodeName === 'OL' && /^\d{1,4}$/.test(ch.getAttribute('start') || '')) keep.start = ch.getAttribute('start');
         if (ch.nodeName === 'UL' && ch.className) { const k = String(ch.className).split(/\s+/).filter(x => x === 'checklist' || x === 'coret').join(' '); if (k) keep['class'] = k; }
         if (ch.nodeName === 'LI' && ch.getAttribute('data-checked') === '1') keep['data-checked'] = '1';
+        if (ch.nodeName === 'TD' || ch.nodeName === 'TH') ['colspan', 'rowspan'].forEach(a => { const v = ch.getAttribute(a); if (/^([2-9]|1\d|20)$/.test(v || '')) keep[a] = v; });
         if (ch.nodeName === 'A') {
           const h = (ch.getAttribute('href') || '').trim();
           if (/^(https?:|mailto:)/i.test(h)) { keep.href = h; keep.target = '_blank'; keep.rel = 'noopener noreferrer'; }
@@ -371,13 +373,22 @@
           items.push(Object.assign(base, { m: /square/.test(type) ? 'kotak' : /circle/.test(type) ? 'bulat0' : 'bulat' }));
         }
       });
-      // 3) garis & gambar
+      // 3) sel tabel (garis & latar) — v1.7.2
+      host.querySelectorAll('td, th').forEach(c => {
+        const r = rel(c.getBoundingClientRect());
+        if (r.w < 1 || r.h < 1) return;
+        const cs = getComputedStyle(c);
+        const bg = rgbOf(cs.backgroundColor);
+        items.push({ k: 'cell', top: r.top, bottom: r.bottom, r: r, bg: bg });
+      });
+      // 4) garis & gambar
       host.querySelectorAll('hr').forEach(hr => { const r = rel(hr.getBoundingClientRect()); items.push({ k: 'hr', top: r.top, bottom: r.bottom + 1, r: r }); });
       host.querySelectorAll('img').forEach(im => { const r = rel(im.getBoundingClientRect()); if (r.w > 1 && r.h > 1) items.push({ k: 'img', top: r.top, bottom: r.bottom, r: r, src: im.getAttribute('src') }); });
     } finally { host.remove(); }
 
     // Kelompokkan per baris visual, lalu pecah ke halaman per baris (tidak memotong teks)
-    items.sort((a, b) => a.top - b.top || (a.k === 'deco' ? -1 : 1));
+    const urutK = { cell: 0, deco: 1 };
+    items.sort((a, b) => a.top - b.top || ((urutK[a.k] !== undefined ? urutK[a.k] : 2) - (urutK[b.k] !== undefined ? urutK[b.k] : 2)));
     const baris = [];
     items.forEach(it => {
       const b = baris[baris.length - 1];
@@ -423,6 +434,11 @@
         if (it.on) { d.setFillColor(26, 115, 232); d.setDrawColor(26, 115, 232); d.roundedRect(x, y, k, k, 0.4, 0.4, 'FD'); d.setDrawColor(255, 255, 255); d.setLineWidth(0.4); d.line(x + k * 0.2, y + k * 0.52, x + k * 0.42, y + k * 0.74); d.line(x + k * 0.42, y + k * 0.74, x + k * 0.8, y + k * 0.28); }
         else d.roundedRect(x, y, k, k, 0.4, 0.4, 'S');
       }
+    } else if (it.k === 'cell') {
+      const r = it.r;
+      if (it.bg) { d.setFillColor(it.bg[0], it.bg[1], it.bg[2]); d.rect(X(r.left), Y(r.top), r.w * PX, r.h * PX, 'F'); }
+      d.setDrawColor(0, 0, 0); d.setLineWidth(0.25);
+      d.rect(X(r.left), Y(r.top), r.w * PX, r.h * PX, 'S');
     } else if (it.k === 'hr') {
       d.setDrawColor(200, 200, 200); d.setLineWidth(0.3); d.line(X(it.r.left), Y(it.r.top), X(it.r.right), Y(it.r.top));
     } else if (it.k === 'img') {

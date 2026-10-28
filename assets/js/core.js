@@ -458,9 +458,9 @@
 
   /** Modal umum. body = string HTML. Mengembalikan {el, close} */
   App.modal = function (o) {
-    const back = App.html('<div class="backdrop"><div class="modal ' + (o.wide ? 'wide' : '') + '" role="dialog" aria-modal="true">' +
+    const back = App.html('<div class="backdrop"><div class="modal ' + (o.wide ? 'wide' : '') + (o.tone === 'warn' ? ' tone-warn' : '') + '" role="dialog" aria-modal="true">' +
       '<div class="grabber"></div>' +
-      (o.title ? '<div class="modal-head"><div class="grow"><h3>' + esc(o.title) + '</h3>' + (o.sub ? '<p class="muted" style="font-size:13px;margin-top:2px">' + esc(o.sub) + '</p>' : '') + '</div>' +
+      (o.title ? '<div class="modal-head"><div class="grow"><h3>' + (o.tone === 'warn' ? icon('alert') : '') + '<span>' + esc(o.title) + '</span></h3>' + (o.sub ? '<p class="muted" style="font-size:13px;margin-top:2px">' + esc(o.sub) + '</p>' : '') + '</div>' +
         '<button class="icon-btn" data-x aria-label="Tutup">' + icon('x') + '</button></div>' : '') +
       '<div class="modal-body">' + (o.body || '') + '</div>' +
       (o.foot ? '<div class="modal-foot">' + o.foot + '</div>' : '') + '</div></div>');
@@ -486,7 +486,7 @@
     return new Promise(resolve => {
       let done = false;
       const m = App.modal({
-        title: o.title || 'Konfirmasi',
+        title: o.title || 'Konfirmasi', tone: o.tone,
         body: '<div style="font-size:15px;line-height:1.55">' + (o.html || esc(o.message || '')) + '</div>',
         foot: '<button class="btn btn-soft" data-no>' + esc(o.cancel || 'Tidak') + '</button>' +
           '<button class="btn ' + (o.danger ? 'btn-danger-solid' : 'btn-primary') + '" data-yes autofocus>' + esc(o.ok || 'Iya') + '</button>',

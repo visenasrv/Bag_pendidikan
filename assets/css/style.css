@@ -1266,3 +1266,31 @@ body.presenting #toasts, body.presenting .backdrop, body.presenting .overlay { z
 .present .jen .note .smb .sl { min-width: 7.6em; text-align: center; box-sizing: border-box; font-size: .78em; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--link); background: var(--tint); border-radius: .4em; padding: .1em .45em; white-space: nowrap; }
 .present .jen .note .smb .sk { color: var(--text); font-weight: 600; overflow-wrap: break-word; word-break: normal; line-height: 1.3; }
 .present .jen .note .smb .sp { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── v1.7.2 ── */
+/* peringatan: judul merah */
+.modal.tone-warn .modal-head h3 { color: #DC2626; display: flex; align-items: center; gap: 8px; }
+.modal.tone-warn .modal-head h3 svg { flex: none; }
+:root[data-theme="dark"] .modal.tone-warn .modal-head h3 { color: #F87171; }
+.judul-merah { color: #DC2626; }
+:root[data-theme="dark"] .judul-merah { color: #F87171; }
+/* admin → tampilan utama */
+.adm-top .top-home { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.adm-top .top-home + .sync { margin-left: 8px; }
+.sidebar a.nav-item { text-decoration: none; color: inherit; }
+.hero .hero-admin { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.3); display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(4px); }
+.hero .hero-admin:hover { background: rgba(255,255,255,.26); }
+/* Mode Musyawaroh: keterangan kartu jenjang lebih tebal & jelas */
+.present .jen .note { font-weight: 650; color: var(--text); opacity: .86; font-size: .95em; }
+.present .jen .note.smb-list { opacity: 1; }
+/* Tabel di notulen (editor, tampilan & PDF) */
+.doc-body table { border-collapse: collapse; width: 100%; margin: 6pt 0; table-layout: fixed; }
+.doc-body td, .doc-body th { border: 1px solid #000; padding: 4px 6px; vertical-align: top; min-width: 2em; word-break: break-word; text-align: left; }
+.doc-body th { font-weight: 700; background: #F1F3F4; }
+.doc-body td > p, .doc-body th > p { margin: 0; }
+.gdoc-page td:focus-within, .gdoc-page th:focus-within { outline: 2px solid #1A73E8; outline-offset: -2px; }
+.tbl-grid { display: grid; grid-template-columns: repeat(8, 20px); gap: 3px; margin: 6px 0 4px; }
+.tbl-grid i { width: 20px; height: 20px; border: 1px solid #DADCE0; border-radius: 3px; background: #fff; cursor: pointer; }
+.tbl-grid i.on { background: #D2E3FC; border-color: #1A73E8; }
+.tbl-size { font-size: 12.5px; color: #5F6368; text-align: center; }
+.pop-sep { height: 1px; background: #E8EAED; margin: 6px 0; }
