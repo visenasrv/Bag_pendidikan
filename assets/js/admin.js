@@ -39,7 +39,7 @@
           '<div class="bottom"><div class="row"><span>Mode Gelap</span><label class="switch"><input type="checkbox" data-dark ' + (App.theme.isDark() ? 'checked' : '') + '></label></div>' +
           '<button class="nav-item" data-pwa-install hidden style="justify-content:center">' + icon('download') + ' Instal Aplikasi</button>' +
           '<button class="nav-item" data-logout style="justify-content:center">' + icon('logout') + ' Keluar</button>' +
-          '<div class="ver">v1.6.5 · Sangatta Selatan</div></div></aside>' +
+          '<div class="ver">v1.7 · Sangatta Selatan</div></div></aside>' +
           '<div class="adm-main"><header class="adm-top">' +
           '<div class="mobile-brand">' + App.logo.html('kiri').replace('logo-circle', 'logo-circle sm') + '</div>' +
           '<div class="crumb"><span class="hide-m">' + icon('landmark', 'sm') + '</span><span class="hide-m">Administrasi Pendidikan</span><span class="hide-m">/</span><b data-title></b></div>' +
@@ -52,6 +52,7 @@
         A.shell.querySelectorAll('[data-nav]').forEach(b => { b.onclick = () => App.go(NAV.find(n => n.k === b.getAttribute('data-nav')).p); });
         A.shell.querySelector('[data-dark]').onchange = e => App.theme.set(e.target.checked ? 'dark' : 'light');
         A.shell.querySelector('[data-logout]').onclick = logout;
+        App.idle(() => App.auth.perpanjang());
         A.shell.querySelector('[data-me]').onclick = menuAkun;
         A.shell.querySelector('[data-more]').onclick = menuLainnya;
         void set;
@@ -160,7 +161,7 @@
     const m = App.modal({
       title: 'Menu Lainnya',
       body: '<div class="stack">' + extra.map(n => '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-p="' + n.p + '">' + icon(n.i) + ' ' + n.t + '</button>').join('') +
-        '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-theme>' + icon('palette') + ' Ganti Tema (Terang/Gelap)</button>' +
+        '<button class="btn btn-soft btn-block" style="justify-content:flex-start" data-theme>' + App.theme.icon() + ' Ganti Tema (Terang/Gelap)</button>' +
         '<button class="btn btn-danger btn-block" style="justify-content:flex-start" data-out>' + icon('logout') + ' Keluar</button></div>',
     });
     m.el.querySelectorAll('[data-p]').forEach(b => { b.onclick = () => { m.close(true); App.go(b.getAttribute('data-p')); }; });
@@ -190,12 +191,13 @@
     const lanjut = decodeURIComponent((location.hash.split('lanjut=')[1] || '').split('&')[0]) || '/admin/dashboard';
     if (App.auth.valid()) { App.go(lanjut, true); return; }
     const root = App.mount('<div class="pub" style="padding-top:24px">' +
-      '<div style="text-align:right"><button class="icon-btn" data-theme aria-label="Ganti tema">' + icon('palette') + '</button></div>' +
+      '<div style="text-align:right"><button class="icon-btn" data-theme aria-label="' + App.theme.label() + '" title="' + App.theme.label() + '">' + App.theme.icon() + '</button></div>' +
       '<div style="text-align:center;margin:8px 0 20px"><div style="display:inline-flex;gap:10px">' + App.logo.html('kiri') + '</div>' +
       '<h1 style="font-size:24px;margin-top:16px;font-weight:800">Masuk Admin</h1><p class="muted">Bagian Pendidikan Desa · ' + esc(App.meta().nama) + '</p></div>' +
       '<form class="card lg" data-form autocomplete="on"><div class="field"><label for="u">Username</label><input class="input" id="u" name="username" autocomplete="username" autocapitalize="none" required></div>' +
       '<div class="field"><label for="pw">Password</label><div class="input-wrap"><input class="input" id="pw" name="password" type="password" autocomplete="current-password" required style="padding-right:52px">' +
       '<button type="button" class="icon-btn" data-eye style="position:absolute;right:2px;top:2px" aria-label="Tampilkan password">' + icon('eye') + '</button></div></div>' +
+      '<label class="check-row" style="margin-top:14px"><input type="checkbox" id="ingat"' + (App.auth.terinstal() || App.ls.get('mp_ingat') ? ' checked' : '') + '><span><b>Tetap masuk di perangkat ini</b><small>Tidak perlu login lagi setiap membuka aplikasi. Jangan dicentang di perangkat umum/bersama.</small></span></label>' +
       '<div data-msg style="margin-top:14px"></div>' +
       '<button class="btn btn-primary btn-block" style="margin-top:18px" type="submit">' + icon('lock') + ' Masuk</button></form>' +
       '<div style="text-align:center;margin-top:18px"><a class="btn btn-ghost" href="#/">' + icon('arrowL') + ' Kembali ke Beranda</a></div></div>');
@@ -210,8 +212,10 @@
       msg.innerHTML = '';
       App.busy(btn, true);
       try {
-        const r = await App.api.call('login', { username: root.querySelector('#u').value.trim(), password: pw.value }, { post: true });
-        App.auth.set(r.token, r.username, r.exp);
+        const ingat = root.querySelector('#ingat').checked;
+        App.ls.set('mp_ingat', ingat ? 1 : 0);
+        const r = await App.api.call('login', { username: root.querySelector('#u').value.trim(), password: pw.value, ingat: ingat }, { post: true });
+        App.auth.set(r.token, r.username, r.exp, !!r.ingat);
         if (!App.ls.get('mp_seen_laporan')) App.ls.set('mp_seen_laporan', Date.now());
         if (r.bundle) {
           // Prinsip 3: data admin ikut dalam balasan login → langsung tampil tanpa panggilan kedua

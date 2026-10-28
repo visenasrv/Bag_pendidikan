@@ -76,7 +76,7 @@
       if (!this.admin) {
         html += '<header class="topbar"><button class="icon-btn" data-exit aria-label="Kembali">' + icon('arrowL') + '</button>' +
           '<div class="title"><h1>' + esc(judul) + '</h1><p>' + esc(sub) + '</p></div>' +
-          '<button class="icon-btn" data-theme aria-label="Ganti tema">' + icon('palette') + '</button></header>';
+          '<button class="icon-btn" data-theme aria-label="' + App.theme.label() + '" title="' + App.theme.label() + '">' + App.theme.icon() + '</button></header>';
       }
       html += '<div class="card stepper" style="' + (this.admin ? 'top:68px' : '') + '">' +
         '<div class="meta"><span>' + (isPreview ? 'Pratinjau · periksa sebelum ' + (this.mode === 'baru' || this.mode === 'adminBaru' ? 'kirim' : 'simpan') : 'Bagian ' + (this.step + 1) + ' dari ' + this.total + ' · ' + esc(sec.judul)) + '</span><span class="num">' + pct + '%</span></div>' +
@@ -166,8 +166,18 @@
           ctl = '<textarea class="textarea" id="f_' + f.k + '" data-k="' + f.k + '" rows="' + (f.rows || 3) + '" placeholder="' + esc(f.ph || '') + '" maxlength="5000">' + esc(v) + '</textarea>';
           break;
       }
+      if (f.rekom) ctl += this.rekomHtml(f);
       return '<div class="field ' + (err ? 'invalid' : '') + '" data-field="' + f.k + '">' + lbl + ctl +
         (err ? '<div class="err-msg">' + icon('alertCircle', 'sm') + esc(err) + '</div>' : (f.help ? '<div class="help">' + esc(f.help) + '</div>' : '')) + '</div>';
+    }
+
+    /** v1.7: kotak rekomendasi angka (mis. Muda-Mudi = Praremaja + Remaja + Pranikah) */
+    rekomHtml(f) {
+      const r = f.rekom(this.data);
+      if (!r || !(r.v > 0)) return '<div data-rekom-box="' + f.k + '"></div>';
+      const pas = String(this.data[f.k]) === String(r.v);
+      return '<div class="rekom ' + (pas ? 'pas' : '') + '" data-rekom-box="' + f.k + '">' + icon('sparkle', 'sm') + '<div class="grow">Rekomendasi: <b class="num">' + App.fmtNum(r.v) + '</b> orang<small>' + esc(r.teks) + '</small></div>' +
+        (pas ? '<span class="badge ok">' + icon('check', 'sm') + ' Sesuai</span>' : '<button type="button" class="btn btn-soft btn-xs" data-rekom="' + f.k + '" data-v="' + r.v + '">' + icon('check', 'sm') + ' Pakai angka ini</button>') + '</div>';
     }
 
     sectionHtml(sec) {
@@ -213,7 +223,52 @@
       if (c.terkunci && c.tutupBaru && !this.admin) {
         return '<div class="notice err">' + icon('lock') + '<div><b>Periode ' + esc(per) + ' sudah ditutup</b>Bagian Pendidikan Desa sudah mengunci periode ini. Silakan hubungi admin.</div></div>';
       }
+      const gap = this.lompat();
+      if (gap.length) {
+        const daftar = gap.length <= 3 ? gap.map(g => App.periode(g.bulan, g.tahun)).join(', ') : App.periode(gap[0].bulan, gap[0].tahun) + ' s.d. ' + App.periode(gap[gap.length - 1].bulan, gap[gap.length - 1].tahun) + ' (' + gap.length + ' bulan)';
+        return '<div class="notice warn">' + icon('alert') + '<div class="grow"><b>Ada bulan yang terlewat</b>Laporan ' + esc(kel ? kel.nama : '') + ' untuk <strong>' + esc(daftar) + '</strong> belum ada. Laporan terakhir: ' + esc(App.periode(this.cek.terakhir.bulan, this.cek.terakhir.tahun)) + '.' +
+          (this.lompatOk === this.cekKey ? '<br>Anda memilih tetap mengisi ' + esc(per) + '.' : '') +
+          '<button type="button" class="btn btn-sm btn-block lompat-btn" data-isi-lewat>' + icon('edit') + ' Isi ' + esc(App.periode(gap[0].bulan, gap[0].tahun)) + ' dulu</button></div></div>';
+      }
       return '<div class="notice">' + icon('checkCircle') + '<div>Belum ada laporan ' + esc(kel ? kel.nama : '') + ' untuk ' + esc(per) + '. Silakan lanjutkan.</div></div>';
+    }
+
+    /** v1.7: bulan yang terlewat antara laporan terakhir kelompok dan bulan yang dipilih (hanya formulir umum) */
+    lompat() {
+      const c = this.cek, d = this.data;
+      if (this.mode !== 'baru' || !c || c.loading || c.error || c.ada || !c.terakhir || !d.Bulan || !d.Tahun) return [];
+      const sel = +d.Tahun * 12 + +d.Bulan - 1, last = c.terakhir.tahun * 12 + c.terakhir.bulan - 1;
+      const out = [];
+      for (let x = last + 1; x < sel && out.length < 24; x++) out.push({ bulan: x % 12 + 1, tahun: Math.floor(x / 12) });
+      return out;
+    }
+    /** Tanya sekali per pilihan: tetap isi bulan ini? true = lanjut */
+    async tanyaLompat() {
+      const gap = this.lompat();
+      if (!gap.length || this.lompatOk === this.cekKey) return true;
+      const key = this.cekKey;
+      const per = App.periode(this.data.Bulan, this.data.Tahun);
+      const g0 = App.periode(gap[0].bulan, gap[0].tahun);
+      const kel = (this.o.kelompok || []).find(k => k.id === this.data.KelompokID);
+      const ok = await App.confirm({
+        title: 'Laporan ' + g0 + ' belum ada',
+        html: 'Laporan <b>' + esc(kel ? kel.nama : '') + '</b> untuk <b>' + esc(gap.map(g => App.periode(g.bulan, g.tahun)).slice(0, 6).join(', ') + (gap.length > 6 ? ', …' : '')) + '</b> belum dikirim, tetapi Anda memilih <b>' + esc(per) + '</b>.' +
+          '<br><span class="muted" style="font-size:13px">Ingat: yang dilaporkan adalah bulan yang KBM-nya sudah berjalan penuh.</span><br><br>Tetap isi laporan <b>' + esc(per) + '</b>?',
+        ok: 'Iya, tetap ' + per, cancel: 'Tidak, isi ' + g0,
+      });
+      if (this.cekKey !== key) return false;
+      if (ok) { this.lompatOk = key; this.paintCek(); return true; }
+      this.pindahBulan(gap[0]);
+      return false;
+    }
+    pindahBulan(g) {
+      this.data.Bulan = g.bulan; this.data.Tahun = g.tahun;
+      delete this.errors.Bulan;
+      this.saveDraft();
+      this.rerenderSection();
+      this._tanyaLompat = false;
+      this.runCek();
+      App.toast('Bulan laporan diganti ke ' + App.periode(g.bulan, g.tahun) + '.', 'info');
     }
 
     async runCek() {
@@ -236,6 +291,7 @@
       }
       this.paintCek();
       if (this.cek && this.cek.ada && this.errors.Bulan === undefined && this.step === 0 && this._triedNext) this.validateStep(0);
+      if (this._tanyaLompat && this.cekKey === key && this.step === 0) { this._tanyaLompat = false; this.tanyaLompat(); }
     }
     paintCek() {
       const el = this.root && this.root.querySelector('[data-cek]');
@@ -243,6 +299,8 @@
       el.innerHTML = this.cekHtml();
       const b = el.querySelector('[data-koreksi]');
       if (b) b.onclick = () => this.o.onKoreksi && this.o.onKoreksi(Object.assign({}, this.data));
+      const lw = el.querySelector('[data-isi-lewat]');
+      if (lw) lw.onclick = () => { const g = this.lompat()[0]; if (g) this.pindahBulan(g); };
     }
 
     previewHtml() {
@@ -281,7 +339,9 @@
             if (fe) { fe.classList.remove('invalid'); const m = fe.querySelector('.err-msg'); if (m) m.remove(); }
           }
           this.saveDraft();
-          if (k === 'KelompokID' || k === 'Bulan' || k === 'Tahun') this.runCek();
+          if (k === 'KelompokID' || k === 'Bulan' || k === 'Tahun') { this._tanyaLompat = true; this.runCek(); }
+          const box = c.querySelector('[data-rekom-box="' + k + '"]');
+          if (box) { const f = App.FORM.reduce((a, s) => a || s.fields.find(x => x.k === k), null); if (f && f.rekom) { box.outerHTML = this.rekomHtml(f); this.bindRekom(); } }
         };
         el.addEventListener('input', handler);
         if (el.tagName === 'SELECT') el.addEventListener('change', handler);
@@ -295,6 +355,7 @@
           this.rerenderSection();
         };
       });
+      this.bindRekom();
       c.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => this.goto(+b.getAttribute('data-go')); });
       const q = s => c.querySelector(s);
       if (q('[data-next]')) q('[data-next]').onclick = () => this.next();
@@ -304,6 +365,18 @@
       if (q('[data-exit]')) q('[data-exit]').onclick = () => this.exit();
       if (q('[data-theme]')) q('[data-theme]').onclick = () => App.theme.cycle();
       this.paintCek();
+    }
+
+    bindRekom() {
+      this.root.querySelectorAll('[data-rekom]').forEach(b => {
+        b.onclick = () => {
+          const k = b.getAttribute('data-rekom');
+          this.data[k] = b.getAttribute('data-v');
+          delete this.errors[k];
+          this.saveDraft();
+          this.rerenderSection();
+        };
+      });
     }
 
     rerenderSection() {
@@ -332,10 +405,11 @@
       }
     }
 
-    next() {
+    async next() {
       this._triedNext = true;
       const bad = this.validateStep(this.step);
       if (bad.length) { this.rerenderSection(); this.focusFirstError(); return; }
+      if (this.step === 0 && !(await this.tanyaLompat())) return;
       this.goto(this.step + 1);
     }
 

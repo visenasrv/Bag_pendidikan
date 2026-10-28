@@ -5,26 +5,58 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.6.5.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.7.0.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.6.5** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.7.0** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.6.5 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.7.0 (untuk aplikasi yang sudah berjalan)
 
-> **v1.6.5 — menu Lap. Evaluasi** (backend & frontend): menu baru **Lap. Evaluasi** untuk umum (ikon di beranda) dan admin (menu samping) yang menampilkan laporan **Power BI** PPG Kutai Timur di dalam aplikasi, lengkap dengan tombol **Layar penuh** dan **Buka di tab baru**. Laporan ditempel apa adanya — berisi data **semua desa**; pilih Desa / Kelompok Sangatta Selatan lewat filter di dalam laporan (Power BI "Publish to web" tidak bisa disaring otomatis dari luar). Tautannya bisa diganti di **Pengaturan → Lap. Evaluasi** (boleh menempel tautan `view?r=…` atau seluruh kode `<iframe>`); kosong = tautan bawaan. Ganti `Kode.gs` (U1) agar pengaturan tautan tersimpan; tanpa itu menu tetap jalan memakai tautan bawaan.
->
-> **v1.6.1–v1.6.4** (hanya frontend) — PDF daftar hadir: status **Belum konfirmasi** dicetak **"-"**; tanggal & tempat di bawah judul serta catatan cara hitung persentase dihapus; ditambah kolom **tanda tangan** (kiri: *Mengetahui, Ki Desa* · kanan: *Bagian Pendidikan Desa*) yang **namanya terisi otomatis** (baris paling atas):
->  - **Ki Desa** = peserta berdapuan *KI Desa*.
->  - **Bagian Pendidikan Desa** = urutan pencarian: (1) dapuan yang memuat kata **Pendidikan** di kelompok bernama **…Perwakilan…**; (2) dapuan *Bagian Pendidikan Desa* di kelompok mana saja; (3) dapuan memuat *Pendidikan* dan *Desa*; (4) dapuan memuat *Pendidikan* di kelompok bernama **…Desa…**. Dapuan Wakil/Sekretaris/Bendahara/Pembina dilewati; *Bag.* = *Bagian*.
->  - Dicari dulu di daftar hadir sesi itu, lalu di daftar peserta saat ini. Bila tetap tidak ada, dicetak garis titik-titik untuk diisi tangan.
->
-> Bila sudah memasang v1.6.0: ganti `Kode.gs` (U1) lalu salin isi `musyawaroh-pelaporan-update-v1.6.5.zip` dan `git push` (U2). Bila masih di versi lebih lama, kerjakan langkah U1–U3 di bawah dengan ZIP v1.6.5.
+v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan **U2** (`musyawaroh-pelaporan-update-v1.7.0.zip`). Langkah ini sudah mencakup semua isi versi sebelumnya.
 
-### Isi v1.6.0
+**Yang baru di v1.7.0**
+1. **Peringatan bulan terlewat** di Form Laporan: bila pelapor memilih bulan padahal bulan sebelumnya belum dilaporkan (mis. memilih Oktober, laporan September belum ada), muncul peringatan dengan pilihan **"Iya, tetap Oktober"** atau **"Tidak, isi September"**. Pilihan "Tidak" langsung mengganti bulan ke bulan pertama yang terlewat. Catatan bulan terlewat tetap tampil di bawah pilihan bulan. Kelompok yang belum pernah melapor tidak diperingatkan.
+2. **Tetap masuk (admin)**: di halaman Masuk Admin ada centang **"Tetap masuk di perangkat ini"** — otomatis tercentang bila dibuka dari aplikasi yang terinstal. Sesi berlaku 60 hari dan diperpanjang otomatis setiap admin membuka aplikasi, jadi tidak perlu login ulang. Keluar lewat tombol **Keluar**. Mengganti password tetap mengeluarkan semua perangkat.
+3. **Rekomendasi jumlah Muda-Mudi** di form: = Praremaja + Remaja + Pranikah yang sudah diisi, dengan tombol **"Pakai angka ini"** (angka tetap bisa diubah).
+4. **Ikon tema**: mode terang menampilkan **matahari**, mode gelap menampilkan **bulan**.
+5. **Dashboard (umum & admin)**:
+   - grafik baru **Perkembangan Persentase Kehadiran {tahun}** (Jan–Des, per jenjang: Caberawit, Praremaja, Remaja, Pranikah, Muda-Mudi, Tahfidz);
+   - rata-rata kehadiran per jenjang & materi tersampaikan kini berupa **baris angka "Rata-rata"** langsung di bawah tabel **Kehadiran & Materi per Kelompok** (kartu bar sebelumnya dihapus).
+6. **Mode Musyawaroh**: kartu **Pranikah** kini menampilkan juga isian **kegiatan Sambung 1 & 2** beserta persentasenya (depan = bulan ini, belakang = bulan lalu).
+
+### U1. Backend
+1. Ganti seluruh isi `Kode.gs` dengan **v1.7.0** → **Ctrl + S**.
+2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
+
+### U2. Frontend
+1. Salin isi **`musyawaroh-pelaporan-update-v1.7.0.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
+2. `git add .` → `git commit -m "Update v1.7.0"` → `git push`, tunggu 1–2 menit. HP yang sudah memasang aplikasi akan menampilkan **Versi baru tersedia → Muat ulang**.
+
+### Cara memasang aplikasi (bagikan ke pengguna)
+Alamat: **https://visenasrv.github.io/Bag_pendidikan**
+- **Android**: buka di **Chrome** (bukan dari dalam WhatsApp) → **Instal aplikasi** di beranda, atau menu **⋮ → Instal aplikasi / Tambahkan ke layar utama**.
+- **iPhone / iPad**: buka di **Safari** → **Bagikan** → **Tambahkan ke Layar Utama** → **Tambah**.
+- **Laptop (Chrome/Edge)**: ikon **Instal** di ujung kanan bilah alamat, atau tombol **Instal aplikasi** di beranda / menu admin.
+
+---
+
+## Riwayat update sebelumnya
+
+### v1.6.1 – v1.6.5
+**v1.6.5 — menu Lap. Evaluasi** (backend & frontend): menu baru **Lap. Evaluasi** untuk umum (ikon di beranda) dan admin (menu samping) yang menampilkan laporan **Power BI** PPG Kutai Timur di dalam aplikasi, lengkap dengan tombol **Layar penuh** dan **Buka di tab baru**. Laporan ditempel apa adanya — berisi data **semua desa**; pilih Desa / Kelompok Sangatta Selatan lewat filter di dalam laporan (Power BI "Publish to web" tidak bisa disaring otomatis dari luar). Tautannya bisa diganti di **Pengaturan → Lap. Evaluasi** (boleh menempel tautan `view?r=…` atau seluruh kode `<iframe>`); kosong = tautan bawaan. Ganti `Kode.gs` (U1) agar pengaturan tautan tersimpan; tanpa itu menu tetap jalan memakai tautan bawaan.
+
+**v1.6.1–v1.6.4** (hanya frontend) — PDF daftar hadir: status **Belum konfirmasi** dicetak **"-"**; tanggal & tempat di bawah judul serta catatan cara hitung persentase dihapus; ditambah kolom **tanda tangan** (kiri: *Mengetahui, Ki Desa* · kanan: *Bagian Pendidikan Desa*) yang **namanya terisi otomatis** (baris paling atas):
+ - **Ki Desa** = peserta berdapuan *KI Desa*.
+ - **Bagian Pendidikan Desa** = urutan pencarian: (1) dapuan yang memuat kata **Pendidikan** di kelompok bernama **…Perwakilan…**; (2) dapuan *Bagian Pendidikan Desa* di kelompok mana saja; (3) dapuan memuat *Pendidikan* dan *Desa*; (4) dapuan memuat *Pendidikan* di kelompok bernama **…Desa…**. Dapuan Wakil/Sekretaris/Bendahara/Pembina dilewati; *Bag.* = *Bagian*.
+ - Dicari dulu di daftar hadir sesi itu, lalu di daftar peserta saat ini. Bila tetap tidak ada, dicetak garis titik-titik untuk diisi tangan.
+
+(Semua perubahan ini sudah termasuk dalam update v1.7.0.)
+
+
+### v1.6.0
 
 v1.6.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U3 di bawah dengan `Kode.gs` v1.6.0 dan `musyawaroh-pelaporan-update-v1.6.0.zip`. Langkah ini sudah mencakup semua isi versi sebelumnya. Tab **Peserta** otomatis mendapat kolom baru **Sinkron**; data lama tidak berubah.
 
@@ -45,18 +77,18 @@ v1.6.0 mengubah **backend dan frontend**. Kerjakan langkah U1–U3 di bawah deng
    - **Kegiatan Muda-Mudi**: kegiatan Minggu 1–4 (+ lainnya) per kelompok, jumlah & % kehadiran.
 4. **Monitoring Akhlaq → Persentase Jawaban per Pertanyaan**: tulisan lebih besar; arahkan kursor (atau ketuk di HP) pada bagian grafik / jawaban untuk melihat **sebaran umur** anak yang memilih jawaban itu.
 
-### U1. Backend
+#### Backend
 1. Ganti seluruh isi `Kode.gs` dengan **v1.6.0** → **Ctrl + S**.
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
-### U2. Frontend
+#### Frontend
 1. Salin isi **`musyawaroh-pelaporan-update-v1.6.5.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**. File baru: `manifest.webmanifest`, `sw.js`, `pwa.js`, `offline.html`, dan folder `icons/`.
 2. `git add .` → `git commit -m "Update v1.6.0"` → `git push`, tunggu 1–2 menit, lalu **Ctrl + Shift + R**.
 
-### U3. Update berikutnya (penting sejak aplikasi bisa diinstal)
+#### Update berikutnya (penting sejak aplikasi bisa diinstal)
 Aplikasi yang sudah terinstal menyimpan tampilan di HP. Setiap kali file frontend diubah, **naikkan angka versi** di `sw.js` (`const VERSION = 'ppgss-v1.6.0'`) dan semua `?v=1.6.0` di `index.html` & `sw.js` — ZIP update dari saya selalu sudah melakukannya. Tanpa itu, HP pengguna tetap memakai tampilan lama.
 
-### Cara memasang aplikasi (bagikan ke pengguna)
+#### Cara memasang aplikasi
 Alamat: **https://visenasrv.github.io/Bag_pendidikan**
 - **Android**: buka alamat di **Chrome** (bukan dari dalam WhatsApp — ketuk ⋮ → *Buka di Chrome*). Ketuk **Instal aplikasi** di beranda, atau menu **⋮ → Instal aplikasi / Tambahkan ke layar utama**.
 - **iPhone / iPad**: buka di **Safari** → tombol **Bagikan** (kotak panah ke atas) → **Tambahkan ke Layar Utama** → **Tambah**. Admin perlu masuk sekali lagi di aplikasi terpasang (penyimpanannya terpisah dari Safari).
@@ -64,8 +96,6 @@ Alamat: **https://visenasrv.github.io/Bag_pendidikan**
 - Bila muncul **Versi baru tersedia**, ketuk **Muat ulang**. Untuk menghapus: tekan lama ikonnya → **Hapus / Copot pemasangan**.
 
 ---
-
-## Riwayat update sebelumnya
 
 ### v1.5.1 — Monitoring: isian terakhir per anak per bulan
 

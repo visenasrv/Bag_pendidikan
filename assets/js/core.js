@@ -204,7 +204,7 @@
   /** Aksi baca: aman diulang otomatis. Aksi lain = tulis → membawa reqId (aman diulang tanpa data ganda). */
   const READ_ACTIONS = {
     ping: 1, getConfig: 1, getLogos: 1, cekLaporan: 1, getDashboardPublik: 1, getNotulenList: 1, getNotulen: 1, getMonitoring: 1, getMonitoringAdmin: 1, segarkanMonitoring: 1,
-    bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1, getKehadiran: 1,
+    bukaKoreksi: 1, login: 1, logout: 1, cekSesi: 1, getAdminBundle: 1, getDashboardAdmin: 1, listLaporan: 1, getPeserta: 1, getKehadiran: 1, perpanjangSesi: 1,
   };
   App.isRead = a => !!READ_ACTIONS[a];
   App.reqId = () => App.uuid();
@@ -317,7 +317,7 @@
   App.swrBust = key => App.ls.del('swr_' + key);
 
   // ── Pemeriksa versi server: memperingatkan bila Web App belum di-deploy "Versi baru" ──
-  App.SERVER_MIN = '1.6.0';
+  App.SERVER_MIN = '1.7.0';
   /** v1.6.5: Lap. Evaluasi (Power BI "Publish to web") — tautan dari Pengaturan, atau bawaan */
   App.EVALUASI_BAWAAN = 'https://app.powerbi.com/view?r=eyJrIjoiYzVjNWMzNzUtMzM2MC00ODUyLTlkODMtMWNkNWQ3OTI1NWFkIiwidCI6IjA2Yzg5ZTcyLTM3YzMtNDQyMC1hNTA2LTg4MDM1Yjg5NzUxYyIsImMiOjEwfQ%3D%3D';
   App.evaluasiUrl = function () {
@@ -557,6 +557,19 @@
 
   // ───────────────────────── Tema ─────────────────────────
   App.theme = {
+    /** v1.7: ikon tombol tema mengikuti mode — matahari (terang) / bulan (gelap) */
+    icon(sz) { return App.icon(this.isDark() ? 'moon' : 'sun', sz); },
+    label() { return this.isDark() ? 'Mode gelap — ketuk untuk mode terang' : 'Mode terang — ketuk untuk mode gelap'; },
+    paintIcons() {
+      document.querySelectorAll('button[data-theme]').forEach(b => {
+        const svg = b.querySelector('svg');
+        if (!svg) return;
+        const sz = svg.classList.contains('sm') ? 'sm' : undefined;
+        const t = document.createElement('span'); t.innerHTML = this.icon(sz);
+        svg.replaceWith(t.firstChild);
+        b.setAttribute('aria-label', this.label()); b.title = this.label();
+      });
+    },
     mode() { try { return localStorage.getItem('mp_theme') === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } },
     set(m) {
       try { localStorage.setItem('mp_theme', m); } catch (e) { /* abaikan */ }
@@ -566,6 +579,7 @@
       const dark = this.mode() === 'dark';
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
       this.meta();
+      this.paintIcons();
       document.dispatchEvent(new CustomEvent('themechange'));
     },
     /** Terang ⇄ Gelap (v1.3: tanpa "ikuti perangkat") */
@@ -702,7 +716,19 @@
     get() { const a = App.ls.get('mp_auth'); return a && a.token && a.exp > Date.now() ? a : null; },
     token() { const a = this.get(); return a ? a.token : ''; },
     valid() { return !!this.get(); },
-    set(token, username, exp) { App.ls.set('mp_auth', { token: token, username: username, exp: exp || Date.now() + 8 * 3600e3 }); },
+    set(token, username, exp, ingat) { App.ls.set('mp_auth', { token: token, username: username, exp: exp || Date.now() + 8 * 3600e3, ingat: !!ingat }); },
+    /** v1.7: aplikasi dibuka sebagai aplikasi terinstal (PWA)? */
+    terinstal() { try { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) { return false; } },
+    /** v1.7: sesi "tetap masuk" diperpanjang otomatis (sekali per pembukaan aplikasi) */
+    async perpanjang() {
+      const a = this.get();
+      if (!a || !a.ingat || this._diperpanjang) return;
+      this._diperpanjang = true;
+      try {
+        const r = await App.api.admin('perpanjangSesi', {});
+        if (r && r.token) this.set(r.token, r.username || a.username, r.exp, true);
+      } catch (e) { this._diperpanjang = false; }
+    },
     clear() { App.ls.del('mp_auth'); },
     expired() {
       this.clear();

@@ -46,7 +46,9 @@
       id: 'mudamudi', huruf: 'f', judul: 'Muda-Mudi', pendek: 'Muda-Mudi',
       sub: 'Kegiatan muda-mudi per minggu bulan ini',
       fields: [
-        { k: 'Jml_MudaMudi', label: 'Jumlah Muda-Mudi', type: 'num', suffix: 'Orang', req: true, big: true },
+        { k: 'Jml_MudaMudi', label: 'Jumlah Muda-Mudi', type: 'num', suffix: 'Orang', req: true, big: true,
+          // v1.7: rekomendasi = Praremaja + Remaja + Pranikah (dari isian bagian sebelumnya)
+          rekom: d => { const n = k => App.num(d[k]); const v = n('Jml_Praremaja') + n('Jml_Remaja') + n('Jml_Pranikah'); return { v: v, teks: 'Praremaja ' + n('Jml_Praremaja') + ' + Remaja ' + n('Jml_Remaja') + ' + Pranikah ' + n('Jml_Pranikah') }; } },
         { k: 'MM_Minggu1', label: 'Minggu 1', type: 'text', req: true, ph: 'Kegiatan minggu pertama (tulis "Tidak ada" bila kosong)' },
         { k: 'MM_Minggu2', label: 'Minggu 2', type: 'text', req: true, ph: 'Kegiatan minggu kedua (tulis "Tidak ada" bila kosong)' },
         { k: 'MM_Minggu3', label: 'Minggu 3', type: 'text', req: true, ph: 'Kegiatan minggu ketiga (tulis "Tidak ada" bila kosong)' },

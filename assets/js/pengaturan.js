@@ -321,7 +321,7 @@
       try {
         const r = await App.api.admin('gantiPassword', { lama: lama, baru: baru });
         const a = App.auth.get() || {};
-        App.auth.set(r.token, a.username, Date.now() + 8 * 3600e3);
+        App.auth.set(r.token, a.username, r.exp || Date.now() + 8 * 3600e3, r.ingat !== undefined ? r.ingat : a.ingat);
         ['[data-old]', '[data-new]', '[data-new2]'].forEach(x => { q(x).value = ''; });
         msg.innerHTML = '<div class="notice">' + icon('checkCircle') + '<div>Password berhasil diganti.</div></div>';
       } catch (er) { err(er.message); }

@@ -1240,3 +1240,28 @@ body.presenting #toasts, body.presenting .backdrop, body.presenting .overlay { z
 @media (max-width: 720px) { .eval-frame { height: calc(100vh - 230px); min-height: 460px; margin-left: -6px; margin-right: -6px; } }
 .eval-frame.loaded .eval-load { display: none; }
 .eval-tip strong { font-weight: 700; }
+
+/* ── v1.7 Dashboard: baris rata-rata di bawah tabel per kelompok ── */
+.mutu-tbl tfoot td { border-top: 2px solid var(--border); border-bottom: 0; background: var(--surface-2); padding-top: 12px; padding-bottom: 12px; }
+.mutu-tbl tfoot td small { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+.mutu-tbl tfoot .rata { font-size: 16px; font-weight: 800; }
+.mutu-tbl tfoot .rata.hi { color: #15803D; } .mutu-tbl tfoot .rata.md { color: #B45309; } .mutu-tbl tfoot .rata.lo { color: #B91C1C; } .mutu-tbl tfoot .rata.na { color: var(--muted); font-weight: 500; }
+:root[data-theme="dark"] .mutu-tbl tfoot .rata.hi { color: #4ADE80; } :root[data-theme="dark"] .mutu-tbl tfoot .rata.md { color: #FBBF24; } :root[data-theme="dark"] .mutu-tbl tfoot .rata.lo { color: #F87171; }
+.mutu-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; padding: 10px 16px 14px; font-size: 12px; }
+.mutu-foot .mutu-leg { margin: 0; }
+.rekom { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--tint); font-size: 13.5px; }
+.rekom .grow { min-width: 180px; }
+.rekom b.num { font-size: 16px; }
+.rekom small { display: block; color: var(--muted); font-size: 12px; }
+.rekom.pas { background: var(--surface-2); color: var(--muted); }
+.check-row { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 14px; }
+.check-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); flex: none; }
+.check-row b { display: block; font-weight: 650; }
+.check-row small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.lompat-btn { margin-top: 10px; background: var(--surface); }
+
+/* ── v1.7 Mode Musyawaroh: kegiatan sambung di kartu Pranikah ── */
+.present .jen .note .smb { display: grid; grid-template-columns: auto 1fr auto; gap: .2em .5em; align-items: baseline; text-align: left; margin-top: .25em; }
+.present .jen .note .smb .sl { font-size: .78em; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--link); background: var(--tint); border-radius: .4em; padding: .1em .45em; white-space: nowrap; }
+.present .jen .note .smb .sk { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.present .jen .note .smb .sp { color: var(--text); font-variant-numeric: tabular-nums; }

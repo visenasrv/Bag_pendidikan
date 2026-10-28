@@ -1,5 +1,6 @@
 /* ==========================================================================
    dash.js — Tampilan dashboard bersama (publik & admin) · v1.3
+   v1.7: grafik perkembangan persentase kehadiran; rata-rata per jenjang di bawah tabel per kelompok
    Satu penggambar untuk: status laporan, total generus, 7 statistik
    (termasuk Muda-Mudi), grafik per kelompok & tren tahunan, dan
    filter kelompok. Admin menambah tombol kunci & laporan terbaru sendiri.
@@ -108,7 +109,8 @@
       '<div class="grid-2" style="margin-top:16px">' +
       '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('bar') + ' Jumlah Generus per Kelompok</div><div class="card-sub">Distribusi jenjang · ' + esc(periode) + '</div></div></div><div class="chart-box"><canvas data-c1></canvas></div></section>' +
       '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('chart') + ' Perkembangan Generus ' + m.tahun + '</div><div class="card-sub">' + (kel ? esc(namaKel) + ' · ' : '') + 'Jan–Des · klik legenda untuk tampil/sembunyi</div></div></div><div class="chart-box"><canvas data-c2></canvas></div></section>' +
-      '</div>';
+      '</div>' +
+      '<section class="card" style="margin-top:16px"><div class="card-head"><div><div class="card-title">' + icon('chart') + ' Perkembangan Persentase Kehadiran ' + m.tahun + '</div><div class="card-sub">' + (kel ? esc(namaKel) + ' · ' : 'Rata-rata semua kelompok (ditimbang jumlah peserta) · ') + 'Jan–Des · klik legenda untuk tampil/sembunyi</div></div></div><div class="chart-box" style="height:300px"><canvas data-c3></canvas></div></section>';
 
     if (opt.onOpen) c.querySelectorAll('[data-open]').forEach(el => { el.onclick = () => opt.onOpen(mo.items.find(i => i.id === el.getAttribute('data-open'))); });
     drawCharts(c, m, kel, items);
@@ -127,22 +129,20 @@
     const its = items.filter(i => i.mutu);
     if (!items.length) return '';
     if (!its.length) return '<section class="card" style="margin-top:16px"><div class="notice">' + icon('info') + '<div>Persentase kehadiran & materi tampil setelah server diperbarui ke v1.6.</div></div></section>';
-    const nLapor = j => its.filter(i => i.mutu.h[j] !== null).length;
-    const hadir = App.JENJANG_HADIR.map((j, i) => meter(j, App.rataPct(its, 'h', i), nLapor(i) ? nLapor(i) + ' kelompok' : (i === 5 ? 'belum ada kelas' : 'belum ada data')));
-    const materi = App.JENJANG_MATERI.map((j, i) => meter(j, App.rataPct(its, 'm', i), its.filter(x => x.mutu.m[i] !== null).length + ' kelompok'));
+    const rH = App.JENJANG_HADIR.map((j, i) => App.rataPct(its, 'h', i));
+    const rM = App.JENJANG_MATERI.map((j, i) => App.rataPct(its, 'm', i));
     const thf = its.filter(i => i.mutu.thf);
     const totThf = thf.reduce((a, i) => a + (i.mutu.thf.jml || 0), 0);
     const urut = (a, b) => String(a.nama).localeCompare(String(b.nama));
-    return '<div class="grid-2 mutu-grid" style="margin-top:16px">' +
-      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('users') + ' Persentase Kehadiran per Jenjang</div><div class="card-sub">' + esc(periode) + (kel ? '' : ' · rata-rata ' + its.length + ' kelompok, ditimbang jumlah peserta') + '</div></div></div>' + hadir.join('') + '</section>' +
-      '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('book') + ' Materi Tersampaikan</div><div class="card-sub">Caberawit, Praremaja & Remaja · ' + esc(periode) + '</div></div></div>' + materi.join('') +
-      '<div class="mutu-leg"><span class="hi">≥ 80%</span><span class="md">60–79%</span><span class="lo">&lt; 60%</span></div></section></div>' +
-
-      (its.length > 1 ? '<section class="card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px"><div><div class="card-title">' + icon('listCheck') + ' Kehadiran & Materi per Kelompok</div><div class="card-sub">' + esc(periode) + '</div></div></div>' +
-        '<div class="tbl-scroll"><table class="tbl mon-tbl mutu-tbl"><thead><tr><th rowspan="2">Kelompok</th><th colspan="6" class="c">Kehadiran</th><th colspan="3" class="c">Materi</th></tr><tr>' +
+    const sepCell = (html, x) => (x === 0 ? html.replace('<td class="r num', '<td class="r num sep') : html);
+    // v1.7: rata-rata per jenjang langsung di bawah tabel per kelompok (angka saja)
+    const rataTd = (v, x, mat) => sepCell('<td class="r num rata ' + kelasPct(v) + '">' + (v === null ? '—' : App.fmtPct(Math.round(v * 10) / 10)) + '</td>', mat ? x : -1);
+    return '<section class="card mutu-card" style="margin-top:16px;padding:0;overflow:hidden"><div class="card-head" style="padding:16px 16px 8px"><div><div class="card-title">' + icon('listCheck') + ' Kehadiran & Materi per Kelompok</div><div class="card-sub">' + esc(periode) + ' · persentase kehadiran tiap jenjang & materi tersampaikan</div></div></div>' +
+        '<div class="tbl-scroll"><table class="tbl mon-tbl mutu-tbl"><thead><tr><th rowspan="2">Kelompok</th><th colspan="6" class="c">Kehadiran</th><th colspan="3" class="c sep">Materi</th></tr><tr>' +
         ['Cbr', 'Prm', 'Rmj', 'Pnk', 'MM', 'Thf', 'Cbr', 'Prm', 'Rmj'].map((h, i) => '<th class="r' + (i === 6 ? ' sep' : '') + '">' + h + '</th>').join('') + '</tr></thead><tbody>' +
-        its.slice().sort(urut).map(i => '<tr><td><b>' + esc(i.nama) + '</b></td>' + i.mutu.h.map(tdPct).join('') + i.mutu.m.map((v, x) => tdPct(v).replace('<td class="r num">', x === 0 ? '<td class="r num sep">' : '<td class="r num">')).join('') + '</tr>').join('') +
-        '</tbody></table></div><p class="muted" style="font-size:12px;padding:8px 16px 14px;margin:0">Cbr Caberawit · Prm Praremaja · Rmj Remaja · Pnk Pranikah (rata-rata sambung) · MM Muda-Mudi · Thf Tahfidz</p></section>' : '') +
+        its.slice().sort(urut).map(i => '<tr><td><b>' + esc(i.nama) + '</b></td>' + i.mutu.h.map(v => tdPct(v)).join('') + i.mutu.m.map((v, x) => sepCell(tdPct(v), x)).join('') + '</tr>').join('') +
+        '</tbody><tfoot><tr><td><b>Rata-rata</b><small>' + (its.length > 1 ? its.length + ' kelompok · ditimbang jumlah peserta' : '1 kelompok') + '</small></td>' + rH.map((v, x) => rataTd(v, x, false)).join('') + rM.map((v, x) => rataTd(v, x, true)).join('') + '</tr></tfoot></table></div>' +
+        '<div class="mutu-foot"><span class="muted">Cbr Caberawit · Prm Praremaja · Rmj Remaja · Pnk Pranikah (rata-rata sambung) · MM Muda-Mudi · Thf Tahfidz</span><span class="mutu-leg"><span class="hi">≥ 80%</span><span class="md">60–79%</span><span class="lo">&lt; 60%</span></span></div></section>' +
 
       '<div class="grid-2" style="margin-top:16px">' +
       '<section class="card"><div class="card-head"><div><div class="card-title">' + icon('book') + ' Kelas Tahfidz</div><div class="card-sub">' + (thf.length ? thf.length + ' dari ' + its.length + ' kelompok punya kelas tahfidz · ' + App.fmtNum(totThf) + ' peserta' : 'Belum ada kelompok yang punya kelas tahfidz') + '</div></div></div>' +
@@ -227,6 +227,28 @@
         scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: grid }, ticks: { precision: 0 } } },
       },
     }));
+    // v1.7: tren persentase kehadiran per jenjang (bulan tanpa laporan = kosong)
+    const c3 = c.querySelector('[data-c3]');
+    if (c3) {
+      const WJ = [dark ? '#A7F3D0' : WARNA.caberawit, dark ? '#7DD3FC' : '#0284C7', dark ? '#FDBA74' : '#EA580C', '#E0B43C', dark ? '#93C5FD' : '#2563EB', dark ? '#F0ABFC' : '#A21CAF'];
+      const perBulan = m.months.map(mo => (kel ? mo.items.filter(i => i.id === kel) : mo.items).filter(i => i.mutu));
+      arr.push(new Chart(c3, {
+        type: 'line',
+        data: {
+          labels: App.BULAN_PENDEK,
+          datasets: App.JENJANG_HADIR.map((j, x) => ({
+            label: j, data: perBulan.map(its => { const v = its.length ? App.rataPct(its, 'h', x) : null; return v === null ? null : Math.round(v * 10) / 10; }),
+            borderColor: WJ[x], backgroundColor: WJ[x], tension: .3, spanGaps: false, borderWidth: 2.2, pointRadius: 3, pointHoverRadius: 6, borderDash: x >= 4 ? [6, 4] : undefined,
+          })),
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } }, tooltip: { callbacks: { label: t => t.dataset.label + ': ' + App.fmtPct(t.parsed.y) } } },
+          scales: { x: { grid: { display: false } }, y: { min: 0, max: 100, grid: { color: grid }, ticks: { callback: v => v + '%' } } },
+        },
+      }));
+    }
     charts.set(c, arr);
   }
 })();
