@@ -5,15 +5,19 @@ Aplikasi ini terdiri dari dua bagian:
 | Bagian | Berkas | Tempat |
 | --- | --- | --- |
 | **Backend** (server & database) | `Kode.gs` | Google Apps Script, menempel di Google Spreadsheet |
-| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.7.0.zip` (update) | GitHub Pages |
+| **Frontend** (tampilan) | isi `musyawaroh-pelaporan.zip` (pasang baru) atau `musyawaroh-pelaporan-update-v1.7.1.zip` (update) | GitHub Pages |
 
 Kerjakan berurutan: **Bagian A → B → C**. Perkiraan waktu ±30 menit.
 
-> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.7.0** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
+> **Sudah memakai aplikasi ini sebelumnya?** Langsung ke **Bagian U — Update ke v1.7.1** di bawah. Tidak perlu memasang ulang dari awal, dan data tidak berubah.
 
 ---
 
-## U. UPDATE KE v1.7.0 (untuk aplikasi yang sudah berjalan)
+## U. UPDATE KE v1.7.1 (untuk aplikasi yang sudah berjalan)
+
+> **v1.7.1** (hanya frontend): perbaikan tampilan kegiatan Sambung 1 & 2 di kartu Pranikah Mode Musyawaroh (bertumpuk, tidak terpotong; Sambung 2 "-" 0% disembunyikan). Nomor versi dinaikkan agar browser & aplikasi terinstal **pasti** mengambil file baru. Bila sudah memasang v1.7.0, cukup salin isi `musyawaroh-pelaporan-update-v1.7.1.zip` lalu `git push`. Bila belum, kerjakan U1 + U2 di bawah dengan ZIP v1.7.1.
+
+### Isi v1.7.0
 
 v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan **U2** (`musyawaroh-pelaporan-update-v1.7.0.zip`). Langkah ini sudah mencakup semua isi versi sebelumnya.
 
@@ -32,7 +36,7 @@ v1.7.0 mengubah **backend dan frontend**. Kerjakan **U1** (`Kode.gs` v1.7.0) dan
 2. **Terapkan → Kelola deployment → ✏️ Edit → Versi: *Versi baru* → Terapkan.**
 
 ### U2. Frontend
-1. Salin isi **`musyawaroh-pelaporan-update-v1.7.0.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
+1. Salin isi **`musyawaroh-pelaporan-update-v1.7.1.zip`** ke folder repo Anda (tanpa `config.js`) dan pilih **Ganti file**.
 2. `git add .` → `git commit -m "Update v1.7.0"` → `git push`, tunggu 1–2 menit. HP yang sudah memasang aplikasi akan menampilkan **Versi baru tersedia → Muat ulang**.
 
 ### Cara memasang aplikasi (bagikan ke pengguna)
